@@ -1,39 +1,10 @@
-"""Add new keys to a shared AnnData zarr store without clobbering another session's.
+"""Add new keys to a shared AnnData zarr store without touching anyone else's.
 
-A *working object* is one AnnData zarr store per dataset that analyses accumulate results in.
-It is a **zarr directory store**, not ``.h5ad`` and not a zip store. In zarr each key is its own
-node, so writing yours never touches theirs. In HDF5 the whole file has to be rewritten, which
-forces you to read back everyone else's keys and fold them into your copy first. A zip store
-cannot take new keys in place at all.
-
-Reading needs nothing from this module:
-
-.. code-block:: python
-
-    adata = ad.read_zarr(path)  # or ad.io.read_elem(zarr.open_group(path)["obs"]) for one slot
-
-Writing back:
-
-.. code-block:: python
-
-    from analysis_workflow import commit_adata
-
-    adata.obs["niche_v3"] = ...  # modify freely, any slot
-    commit_adata(adata, path)  # dry run: show the diff, get sign-off
-    commit_adata(adata, path, yes=True)  # writes
-
-**Additions only.** Keys already on disk are never written, so another session's work cannot be
-lost and a removal is not expressible: that means minting a new dated copy. Because only new keys
-are written, a *partial* read works too: read the one slot you need, add your key, commit.
-
-Two write paths, because the on-disk encoding has two shapes. In every slot except ``obs``/``var``
-an addition is a create: a new child node in a mapping group. In ``obs``/``var`` the column set is
-declared in the parent's ``column-order`` attribute and the reader returns *only* the columns listed
-there, so adding one means rewriting that element, after re-reading it fresh.
-
-Concurrency: concurrent additions to mapping slots are safe. Concurrent ``obs``/``var`` additions
-are not, but they fail loudly with ``KeyError`` rather than losing data silently, and serialising
-write-backs (the sign-off does) makes all of them survive.
+Two write paths, because the on-disk encoding has two shapes. Outside ``obs``/``var`` an addition is
+a new child node. In ``obs``/``var`` the column set lives in the element's ``column-order`` attribute
+and readers return only the columns listed there, so adding one rewrites the dataframe, re-read fresh
+to carry forward columns added since. Concurrent mapping additions are safe; concurrent ``obs``/``var``
+additions fail loudly (``KeyError``), never silently.
 """
 
 import logging
@@ -80,8 +51,8 @@ def _describe(value) -> str:
 def commit_adata(adata: AnnData, path, *, yes: bool = False) -> dict[str, list[str]]:
     """Write keys that are in ``adata`` but not yet in the zarr store at ``path``.
 
-    Dry run by default: with ``yes=False`` the additions are logged and nothing is written.
-    Keys already on disk are left alone, so this can never overwrite another session's work.
+    Dry run by default: with ``yes=False`` the additions are logged and nothing is written. Keys
+    already on disk are never written, so ``adata`` may hold just the slot you read and your new keys.
 
     Returns
     -------

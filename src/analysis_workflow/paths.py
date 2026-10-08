@@ -1,14 +1,4 @@
-"""Where an analysis task's outputs go, so that none of them dies with a git worktree.
-
-A task is a directory ``analysis/<topic>/.../<name>_vN/``. Its outputs split by durability,
-not by kind:
-
-    results/  reports/          tracked -> stay in the calling checkout, ride the pull request
-    figures/  outputs/  logs/   ignored -> anchored to the MAIN checkout, survive worktree removal
-
-A bare relative write from a worktree lands in the worktree and disappears with it, and since
-worktrees are usually gitignored, git never warns. Resolving through the main checkout avoids that.
-"""
+"""Where an analysis task's outputs go, so that none of them dies with a git worktree."""
 
 import subprocess
 from dataclasses import dataclass
