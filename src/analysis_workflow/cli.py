@@ -42,7 +42,7 @@ def stray_worktree_outputs(main: Path) -> list[Path]:
             for found in (tree / ANALYSIS_DIR).rglob(name):
                 if found.is_dir() and any(found.iterdir()) and _is_task_output(found, tree):
                     stray.append(found)
-    return stray
+    return sorted(stray)
 
 
 def orphaned_outputs(main: Path) -> list[Path]:
@@ -56,7 +56,7 @@ def orphaned_outputs(main: Path) -> list[Path]:
             task = str(found.parent.relative_to(main))
             if not any(d == task or d.startswith(f"{task}/") for d in tracked_dirs):
                 orphans.append(found)
-    return orphans
+    return sorted(orphans)
 
 
 def heavy_tracked(main: Path) -> list[tuple[Path, int, str]]:
