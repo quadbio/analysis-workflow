@@ -1,12 +1,12 @@
 {
-  "description": "analysis-workflow: always-on core rules, plus guards against worktree-unsafe output paths and pixi installs.",
+  "description": "analysis-workflow, in repos that enable it: always-on core rules, plus guards against worktree-unsafe output paths and pixi installs.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/session_context.md\"",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py\"",
             "timeout": 5
           }
         ]

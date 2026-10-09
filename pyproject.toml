@@ -4,7 +4,7 @@ requires = [ "hatchling" ]
 
 [project]
 name = "analysis-workflow"
-version = "0.1.1"
+version = "0.2.0"
 description = "Task paths, additive AnnData write-back and layout checks for agent-run analysis repos."
 readme = "README.md"
 license = "MIT"
