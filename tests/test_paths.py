@@ -35,6 +35,13 @@ def test_task_paths_split(repo):
     )
 
 
+def test_task_paths_ignore_an_analysis_dir_above_the_checkout(repo_under_analysis):
+    main, worktree = repo_under_analysis
+    paths = task_paths(worktree / "analysis" / "topic" / "demo_v1" / "_common.py")
+    assert paths.task == (worktree / "analysis" / "topic" / "demo_v1").resolve()
+    assert paths.outputs == main.resolve() / "analysis" / "topic" / "demo_v1" / "outputs"
+
+
 def test_task_root_and_scripts_agree(repo):
     _, worktree = repo
     task = worktree / "analysis" / "topic" / "demo_v1"

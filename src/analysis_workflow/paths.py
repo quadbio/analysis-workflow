@@ -24,18 +24,26 @@ NON_TASK_DIRS = frozenset({".pixi", ".git", ".venv", "wandb", "site-packages", "
 
 
 @lru_cache
-def _main_checkout(directory: str) -> Path:
+def _checkouts(directory: str) -> tuple[Path, Path]:
+    """The checkout containing ``directory`` and the repository's main checkout (equal outside a worktree)."""
     try:
-        out = subprocess.run(
-            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        toplevel, common_dir = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--show-toplevel", "--git-common-dir"],
             cwd=directory,
             capture_output=True,
             text=True,
             check=True,
-        ).stdout.strip()
+        ).stdout.splitlines()
     except (subprocess.CalledProcessError, OSError) as err:
         raise RuntimeError(f"{directory} is not inside a git checkout; cannot locate the main checkout") from err
-    return Path(out).parent
+    return Path(toplevel), Path(common_dir).parent
+
+
+def _checkouts_of(start: str | Path) -> tuple[Path, Path]:
+    path = Path(start).resolve()
+    while not path.is_dir():
+        path = path.parent
+    return _checkouts(str(path))
 
 
 def main_checkout(start: str | Path = ".") -> Path:
@@ -44,10 +52,7 @@ def main_checkout(start: str | Path = ".") -> Path:
     Works from any git worktree: ``--git-common-dir`` points at the main checkout's ``.git``.
     Pass ``__file__`` from a script, so the answer does not depend on where it is run from.
     """
-    path = Path(start).resolve()
-    while not path.is_dir():
-        path = path.parent
-    return _main_checkout(str(path))
+    return _checkouts_of(start)[1]
 
 
 @dataclass(frozen=True)
@@ -76,18 +81,18 @@ def task_paths(file: str | Path) -> TaskPaths:
     both resolve to ``<task>``.
     """
     path = Path(file).resolve()
-    parts = path.parts
-    if ANALYSIS_DIR not in parts:
-        raise ValueError(f"{path} is not under an '{ANALYSIS_DIR}/' directory")
-    checkout = Path(*parts[: parts.index(ANALYSIS_DIR)])
+    checkout, main = _checkouts_of(path)
+    analysis = checkout / ANALYSIS_DIR
+    if not path.is_relative_to(analysis):
+        raise ValueError(f"{path} is not under the checkout's '{ANALYSIS_DIR}/' directory, {analysis}")
 
     task = path.parent
     while task.name in RESERVED_TASK_SUBDIRS:
         task = task.parent
-    if task in (checkout / ANALYSIS_DIR, checkout):
+    if task == analysis:
         raise ValueError(f"{path} is not inside a task directory under '{ANALYSIS_DIR}/'")
 
-    main_task = main_checkout(path) / ANALYSIS_DIR / task.relative_to(checkout / ANALYSIS_DIR)
+    main_task = main / ANALYSIS_DIR / task.relative_to(analysis)
     return TaskPaths(
         task=task,
         results=task / "results",

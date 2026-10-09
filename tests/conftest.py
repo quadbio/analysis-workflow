@@ -10,7 +10,16 @@ def git(*args, cwd):
 @pytest.fixture
 def repo(tmp_path):
     """A main checkout with one committed task, and a worktree of it under .claude/worktrees/."""
-    main = tmp_path / "myproject"
+    return make_repo(tmp_path / "myproject")
+
+
+@pytest.fixture
+def repo_under_analysis(tmp_path):
+    """As ``repo``, but inside an unrelated directory that is also named ``analysis``."""
+    return make_repo(tmp_path / "analysis" / "myproject")
+
+
+def make_repo(main):
     task = main / "analysis" / "topic" / "demo_v1"
     task.mkdir(parents=True)
     (task / "README.md").write_text("# demo_v1\n")
