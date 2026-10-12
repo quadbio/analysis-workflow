@@ -92,7 +92,16 @@ def test_pixi_allows_running_on_the_main_checkouts_environment(repo, pixi_worktr
     assert run("guard_worktree_pixi.py", bash(command, pixi_worktree)) == 0
 
 
-@pytest.mark.parametrize("line", ["pixi run python scripts/a.py", "srun -n1 pixi run python a.py", "pixi install"])
+@pytest.mark.parametrize(
+    "line",
+    [
+        "pixi run python scripts/a.py",
+        "srun -n1 pixi run python a.py",
+        "pixi install",
+        "pixi \\\n    run python a.py",  # continued line
+        "pixi run --manifest-path ../../../pixi.toml python a.py",  # resolves against the job's directory
+    ],
+)
 def test_task_paths_blocks_job_scripts_running_pixi_on_the_worktree(pixi_worktree, line):
     job = pixi_worktree / "analysis" / "t_v1" / "scripts" / "run.sh"
     assert run("guard_task_paths.py", write(job, f"#!/bin/bash\n{line}\n")) == 2

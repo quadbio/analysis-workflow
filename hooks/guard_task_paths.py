@@ -28,9 +28,10 @@ from _repo import adopted, checkouts, is_root_of_worktree, nearest_manifest
 CODE_SUFFIXES = {".py", ".sh", ".sbatch", ".ipynb", ".R"}
 JOB_SCRIPT_SUFFIXES = {".sh", ".sbatch"}
 
-#: A non-comment line running `pixi` on whatever workspace it finds, rather than one named by `--manifest-path`.
+#: A non-comment line running `pixi` on any workspace but one named through a shell variable (`$MAIN`): a relative
+#: `--manifest-path` resolves against the job's directory, which is unknown when the script is written.
 PIXI_ON_FOUND_WORKSPACE = re.compile(
-    r"^(?!\s*#)(?!.*--manifest-path).*\bpixi\b.*\b(run|shell|install|add|lock)\b", re.MULTILINE
+    r"""^(?!\s*#)(?!.*--manifest-path[= ]["']?\$).*\bpixi\b.*\b(run|shell|install|add|lock)\b""", re.MULTILINE
 )
 
 
@@ -76,7 +77,7 @@ def main() -> int:
     hits = [(what, fix) for pattern, what, fix in _rules(found[1].name) if pattern.search(written)]
     if (
         file_path.suffix in JOB_SCRIPT_SUFFIXES
-        and PIXI_ON_FOUND_WORKSPACE.search(written)
+        and PIXI_ON_FOUND_WORKSPACE.search(written.replace("\\\n", " "))  # one line per command
         and is_root_of_worktree(nearest_manifest(file_path.parent))
     ):
         hits.append(
