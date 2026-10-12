@@ -1,6 +1,6 @@
 {
   "name": "analysis-workflow",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Conventions for analysis repos where humans (notebooks) and coding agents (scripts) work side by side: one task per session, worktree and directory; worktree-safe output paths; additive write-back to AnnData zarr working objects. Ships a skill, guard hooks and the analysis_workflow Python package.",
   "author": {
     "name": "quadbio"

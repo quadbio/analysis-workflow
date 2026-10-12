@@ -1,3 +1,4 @@
+import json
 import subprocess
 
 import pytest
@@ -19,10 +20,19 @@ def repo_under_analysis(tmp_path):
     return make_repo(tmp_path / "analysis" / "myproject")
 
 
-def make_repo(main):
+@pytest.fixture
+def unadopted_repo(tmp_path):
+    """As ``repo``, but its settings do not enable the plugin."""
+    return make_repo(tmp_path / "other", adopted=False)
+
+
+def make_repo(main, adopted=True):
     task = main / "analysis" / "topic" / "demo_v1"
     task.mkdir(parents=True)
     (task / "README.md").write_text("# demo_v1\n")
+    settings = {"enabledPlugins": {"analysis-workflow@quadbio": adopted}}
+    (main / ".claude").mkdir()
+    (main / ".claude" / "settings.json").write_text(json.dumps(settings))
     git("init", "-b", "main", cwd=main)
     git("-c", "user.name=t", "-c", "user.email=t@t", "add", ".", cwd=main)
     git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-m", "init", cwd=main)

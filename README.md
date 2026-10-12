@@ -24,8 +24,9 @@ claude plugin marketplace add quadbio/claude-plugins
 claude plugin install analysis-workflow@quadbio
 ```
 
-**Enable it per repository**, not for your user: the hooks and session-start rules are meant for analysis
-repos only. In the repo's committed `.claude/settings.json`:
+The skill is then available everywhere, so it can set up a new project. The hooks and session-start rules act only
+in repos that enable the plugin in their committed `.claude/settings.json`, as
+[analysis_template](https://github.com/quadbio/analysis_template) does:
 
 ```json
 {
@@ -40,7 +41,7 @@ repos only. In the repo's committed `.claude/settings.json`:
 
 ```toml
 [pypi-dependencies]
-analysis-workflow = { git = "https://github.com/quadbio/analysis-workflow", tag = "v0.1.0" }
+analysis-workflow = { git = "https://github.com/quadbio/analysis-workflow", tag = "v0.2.0" }
 ```
 
 ## Develop

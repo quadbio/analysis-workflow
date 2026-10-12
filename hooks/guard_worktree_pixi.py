@@ -10,8 +10,9 @@ blocked too: a worktree runs on the main checkout's environment. Allowed through
 - `--manifest-path` pointing outside `.claude/worktrees` (the main checkout, or a sibling
   checkout used to regenerate the lock), where `path = "."` resolves correctly.
 
-Any unquoted `pixi` token counts, wherever it stands; words inside quoted text (a PR body) do
-not. The guard is against accidents, not obfuscation, and errs towards blocking.
+It acts only in a repo that has adopted the plugin. Any unquoted `pixi` token counts, wherever it
+stands; words inside quoted text (a PR body) do not. The guard is against accidents, not obfuscation,
+and errs towards blocking.
 
 PreToolUse hook (Bash): exit 2 blocks the call and shows stderr to the agent.
 Standard library only: it runs on whatever `python3` is on PATH.
@@ -22,6 +23,8 @@ import re
 import shlex
 import sys
 from pathlib import Path
+
+from _repo import adopted, checkouts
 
 _MUTATING = {"install", "add", "lock", "upgrade", "update", "reinstall", "remove"}
 # These use the workspace environment, installing it first if it is missing.
@@ -85,7 +88,12 @@ def _is_root_of_worktree(manifest: Path) -> bool:
         return False
     if manifest.exists() and 'path = "."' not in manifest.read_text(errors="ignore"):
         return False  # task-local workspace
-    return True
+    return _in_adopted_repo(manifest.parent)
+
+
+def _in_adopted_repo(directory: Path) -> bool:
+    found = checkouts(directory)
+    return found is not None and adopted(found[0])
 
 
 def main() -> int:
@@ -98,9 +106,11 @@ def main() -> int:
         return 0
     calls = _pixi_calls(command)
     if calls is None:  # unparsable: fall back to the conservative text match
-        blocked = ".claude/worktrees" in str(cwd) and re.search(rf"\bpixi\b.*\b({'|'.join(_BLOCKED)})\b", command)
+        pattern = rf"\bpixi\b.*\b({'|'.join(_BLOCKED)})\b"
+        blocked = ".claude/worktrees" in str(cwd) and re.search(pattern, command) and _in_adopted_repo(cwd)
     else:
-        blocked = any((m := _manifest(args, cwd)) is None or _is_root_of_worktree(m) for args in calls)
+        manifests = [_manifest(args, cwd) for args in calls]
+        blocked = any(_in_adopted_repo(cwd) if m is None else _is_root_of_worktree(m) for m in manifests)
     if not blocked:
         return 0
 

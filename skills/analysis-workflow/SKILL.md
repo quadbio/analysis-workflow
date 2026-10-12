@@ -3,8 +3,8 @@ name: analysis-workflow
 description: >-
   Conventions for analysis repos where humans (notebooks) and coding agents (scripts) work side by side. Use when
   starting, running or finishing an analysis task; writing any output from an analysis script; reading or writing a
-  shared AnnData working object; adding a dataset path or constant; setting up or adopting these conventions in a
-  repo; or reviewing an analysis pull request.
+  shared AnnData working object; adding a dataset path or constant; starting a new analysis project or adopting
+  these conventions in an existing repo; or reviewing an analysis pull request.
 ---
 
 # Analysis workflow
@@ -12,11 +12,15 @@ description: >-
 Humans and several agents share one analysis repo, isolated by git worktrees, pull requests and task directories.
 These rules keep that safe.
 
+**First, check for the repo.** Outside a repo whose `.claude/settings.json` enables this plugin, set one up with the
+human before anything else: create the analysis repo and, if wanted, its code repo, or adopt an existing repo.
+Steps: `references/repos.md`.
+
 Elsewhere:
 - the repo's `AGENTS.md`: its datasets, where its working objects live, its environments. It wins over examples here;
 - compute and job submission: the environment's own docs or skill;
 - **every scientific plot: the `sci-figures` skill**; cell-type annotation: `cell-type-annotation`;
-- setting up or adopting a repo: `references/repos.md`; why the storage rules are what they are: `references/storage.md`.
+- why the storage rules are what they are: `references/storage.md`.
 
 ## Where code goes
 

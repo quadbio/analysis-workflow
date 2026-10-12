@@ -96,3 +96,24 @@ def test_pixi_allows_the_main_checkout(repo):
     main, _ = repo
     (main / "pixi.toml").write_text('[pypi-dependencies]\nmyproject = { path = ".", editable = true }\n')
     assert run("guard_worktree_pixi.py", bash("pixi install", main)) == 0
+
+
+def test_guards_ignore_repos_that_have_not_adopted_the_plugin(unadopted_repo):
+    _, worktree = unadopted_repo
+    (worktree / "pixi.toml").write_text('[pypi-dependencies]\nother = { path = ".", editable = true }\n')
+    assert run("guard_task_paths.py", write(worktree / "analysis" / "t_v1" / "run.py", 'OUT = "/tmp/run1"')) == 0
+    assert run("guard_worktree_pixi.py", bash("pixi install", worktree)) == 0
+
+
+def session_start(cwd: Path) -> str:
+    payload = json.dumps({"hook_event_name": "SessionStart", "cwd": str(cwd)})
+    return subprocess.run(
+        [sys.executable, HOOKS / "session_start.py"], input=payload, capture_output=True, text=True, check=True
+    ).stdout
+
+
+def test_session_start_prints_the_rules_only_in_an_adopted_repo(repo, unadopted_repo, tmp_path):
+    main, worktree = repo
+    rules = (HOOKS / "session_context.md").read_text()
+    assert session_start(main) == session_start(worktree / "analysis") == rules
+    assert session_start(unadopted_repo[0]) == session_start(tmp_path) == ""
