@@ -24,12 +24,9 @@ import shlex
 import sys
 from pathlib import Path
 
-from _repo import adopted, checkouts, is_root_of_worktree, nearest_manifest
+from _repo import PIXI_ENV_COMMANDS, adopted, checkouts, is_root_of_worktree, nearest_manifest
 
-_MUTATING = {"install", "add", "lock", "upgrade", "update", "reinstall", "remove"}
-# These use the workspace environment, installing it first if it is missing.
-_ENV_USING = {"run", "shell", "shell-hook"}
-_BLOCKED = _MUTATING | _ENV_USING
+_BLOCKED = PIXI_ENV_COMMANDS
 # The first of these after `pixi` is the command, whatever global options precede it.
 _SUBCOMMANDS = _BLOCKED | {
     "auth", "build", "clean", "completion", "config", "exec", "global", "import", "info", "init", "list",

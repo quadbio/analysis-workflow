@@ -11,6 +11,11 @@ from pathlib import Path
 
 PLUGIN = "analysis-workflow"
 
+#: `pixi` subcommands that change the workspace environment, or use it and so install it first if it is missing.
+PIXI_ENV_COMMANDS = frozenset(
+    {"install", "add", "lock", "upgrade", "update", "reinstall", "remove", "run", "shell", "shell-hook"}
+)
+
 
 def checkouts(directory: Path) -> tuple[Path, Path] | None:
     """The checkout containing ``directory`` and the repository's main checkout; None outside git."""

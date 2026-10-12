@@ -100,6 +100,8 @@ def test_pixi_allows_running_on_the_main_checkouts_environment(repo, pixi_worktr
         "pixi install",
         "pixi \\\n    run python a.py",  # continued line
         "pixi run --manifest-path ../../../pixi.toml python a.py",  # resolves against the job's directory
+        'pixi run python a.py && pixi run --manifest-path "$MAIN/pixi.toml" python b.py',  # each call checked
+        "pixi update",
     ],
 )
 def test_task_paths_blocks_job_scripts_running_pixi_on_the_worktree(pixi_worktree, line):
