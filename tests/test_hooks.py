@@ -102,6 +102,8 @@ def test_pixi_allows_running_on_the_main_checkouts_environment(repo, pixi_worktr
         "pixi run --manifest-path ../../../pixi.toml python a.py",  # resolves against the job's directory
         'pixi run python a.py && pixi run --manifest-path "$MAIN/pixi.toml" python b.py',  # each call checked
         "pixi update",
+        'ROOT=$(git rev-parse --show-toplevel); pixi run --manifest-path "$ROOT/pixi.toml" python a.py',
+        'pixi run python a.py  # TODO: --manifest-path "$MAIN/pixi.toml"',
     ],
 )
 def test_task_paths_blocks_job_scripts_running_pixi_on_the_worktree(pixi_worktree, line):
@@ -113,6 +115,7 @@ def test_task_paths_blocks_job_scripts_running_pixi_on_the_worktree(pixi_worktre
     ("rel", "line"),
     [
         ("analysis/t_v1/scripts/run.sh", 'pixi run --manifest-path "$MAIN/pixi.toml" python scripts/a.py'),
+        ("analysis/t_v1/scripts/run.sh", "pixi run --manifest-path=${MAIN}/pixi.toml python scripts/a.py"),
         ("analysis/t_v1/scripts/run.sh", "# not pixi run python a.py, see the README"),
         ("analysis/bench_v1/run.sh", "pixi run python a.py"),  # task-local workspace
         ("analysis/t_v1/scripts/run.py", 'print("pixi run python a.py")'),  # not a job script
