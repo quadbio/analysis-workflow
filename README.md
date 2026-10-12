@@ -17,7 +17,8 @@ It assumes analysis repos made from [analysis_template](https://github.com/quadb
 
 ## Use
 
-Start each analysis task as its own session, from the analysis repo's main checkout:
+Start each analysis task as its own session, from the analysis repo's main checkout. Pull it first: the worktree
+branches from `origin`'s default branch but runs on the main checkout's environment.
 
 ```bash
 claude --worktree <task>
