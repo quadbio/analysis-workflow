@@ -62,9 +62,9 @@ into the human lane.
 
 - Another task's untracked outputs: `task_paths(<its _common.py>).outputs`. Read the main checkout by absolute
   path; never `cd` into it.
-- Batch-job scripts sit in `scripts/` beside the code they run. They take the main checkout as `$MAIN` at submit,
-  never hardcoded, run `pixi run --manifest-path "$MAIN/pixi.toml"`, and log to `PATHS.logs`; the template's
-  Running section shows the `sbatch` line.
+- Batch-job scripts sit in `scripts/` beside the code they run. They get the main checkout as `$MAIN` from the
+  submit command, never hardcoded, run `pixi run --manifest-path "$MAIN/pixi.toml"`, and log to `PATHS.logs`. How
+  to submit them is the cluster's skill.
 - A figure that prints a number may carry `scripts/verify.py` re-deriving it. A code package's invariants belong in
   that package's tests.
 

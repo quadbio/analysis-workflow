@@ -32,13 +32,13 @@ Anything promoted to `data/<dataset>/processed/` at sign-off is recorded here wi
 
 ## Running
 
-From the task directory, on the main checkout's environment. Batch jobs log to `PATHS.logs`:
+From the task directory, on the main checkout's environment. Batch jobs get `MAIN=<main checkout>` at submit and
+log to `PATHS.logs`:
 
 ```bash
 PY="pixi run --manifest-path <main checkout>/pixi.toml python"
 $PY scripts/<step>.py
 LOGS=$($PY -c "from _common import PATHS; print(PATHS.ensure().logs)")
-sbatch --output="$LOGS/%x-%j.out" --export=ALL,MAIN=<main checkout> scripts/<step>.sh
 ```
 
 ## Notes

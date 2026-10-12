@@ -84,7 +84,7 @@ def main() -> int:
             (
                 "a `pixi` call on the worktree's own workspace",
                 'jobs run on the main checkout\'s environment: pixi run --manifest-path "$MAIN/pixi.toml", '
-                "with MAIN passed at submit (sbatch --export=ALL,MAIN=<main checkout>)",
+                "with MAIN passed in at submit",
             )
         )
     if not hits:
