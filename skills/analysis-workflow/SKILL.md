@@ -100,6 +100,9 @@ into the human lane.
 - The root `pixi.toml` is shared; reusability decides what goes in. A benchmark's candidates go task-local.
 - A worktree runs on the main checkout's environment: `pixi run --manifest-path <main>/pixi.toml …`.
   `pixi install`/`add`/`lock` run only in the main checkout, by the human, one session at a time.
+- That environment imports the repo's own package and any editable code repo from their main checkouts, so `src/`
+  edits made in a worktree reach it only once merged and pulled into main. Test a code-repo change in that repo's
+  own environment.
 - Verify an environment change with import smoke tests and `--help`, not by re-running analyses.
 
 ## Review
