@@ -52,7 +52,7 @@ their committed `.claude/settings.json`, as [analysis_template](https://github.c
 
 ```toml
 [pypi-dependencies]
-analysis-workflow = { git = "https://github.com/quadbio/analysis-workflow", tag = "v0.2.0" }
+analysis-workflow = { git = "https://github.com/quadbio/analysis-workflow", tag = "v0.2.1" }
 ```
 
 ## Develop
