@@ -15,18 +15,29 @@ It assumes analysis repos made from [analysis_template](https://github.com/quadb
 (pixi-managed) and code repos from the [scverse cookiecutter](https://github.com/scverse/cookiecutter-scverse)
 (uv-managed). Nothing in it is specific to a dataset, an analysis or a compute environment.
 
-## Install
+## Use
 
-**The plugin**, once per machine:
+Start each analysis task as its own session, from the analysis repo's main checkout. Pull it first: the worktree
+branches from `origin`'s default branch but runs on the main checkout's environment.
 
 ```bash
-claude plugin marketplace add quadbio/claude-plugins
-claude plugin install analysis-workflow@quadbio
+claude --worktree <task>
 ```
 
-The skill is then available everywhere, so it can set up a new project. The hooks and session-start rules act only
-in repos that enable the plugin in their committed `.claude/settings.json`, as
-[analysis_template](https://github.com/quadbio/analysis_template) does:
+1. The agent works on that worktree's branch, in a new task directory `analysis/<topic>/<task>_vN/`; a later
+   answer to the same question gets the next version, in a new session.
+2. It asks you which working object is current, then works in scripts; outputs go to the task directory.
+3. Results reach a shared working object only after you sign off the dry run.
+4. It opens a PR. Once it is merged, leave with `/exit` and remove the worktree.
+
+Notebooks and environment changes (`pixi install`, `pixi add`) stay with you, in the main checkout. With no
+analysis repo yet, ask Claude to start an analysis project: the skill sets one up.
+
+## Install
+
+**The plugin**, once per machine, from the [quadbio marketplace](https://github.com/quadbio/claude-plugins). The
+skill is then available everywhere; the hooks and session-start rules act only in repos that enable the plugin in
+their committed `.claude/settings.json`, as [analysis_template](https://github.com/quadbio/analysis_template) does:
 
 ```json
 {

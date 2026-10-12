@@ -41,7 +41,8 @@ into the human lane.
 
 **Start**
 1. One task = one session = one git worktree = one branch = one directory `analysis/<topic>/.../<name>_vN/`, merged
-   through one or more PRs. A new task directory needs a new session; a later answer to the same question is `_v2`.
+   through one or more PRs. A new task directory needs a new session, which the human starts with
+   `claude --worktree <name>` in the main checkout; a later answer to the same question is `_v2`.
 2. Copy `assets/task_template/`.
 3. Ask which working object and which label keys are current, and record them under Inputs. Never infer them from a
    script or the newest file name.
