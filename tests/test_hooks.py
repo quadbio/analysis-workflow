@@ -104,6 +104,8 @@ def test_pixi_allows_running_on_the_main_checkouts_environment(repo, pixi_worktr
         "pixi update",
         'ROOT=$(git rev-parse --show-toplevel); pixi run --manifest-path "$ROOT/pixi.toml" python a.py',
         'pixi run python a.py  # TODO: --manifest-path "$MAIN/pixi.toml"',
+        'echo "starting # job"; pixi run python a.py',  # a quoted hash is no comment
+        'pixi run python a.py --manifest-path "$MAIN/pixi.toml"',  # after the task, the flag is the task's
     ],
 )
 def test_task_paths_blocks_job_scripts_running_pixi_on_the_worktree(pixi_worktree, line):

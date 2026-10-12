@@ -22,26 +22,23 @@ import re
 import sys
 from pathlib import Path
 
-from _repo import PIXI_ENV_COMMANDS, adopted, checkouts, is_root_of_worktree, nearest_manifest
+from _repo import PIXI_ENV_COMMANDS, adopted, checkouts, is_root_of_worktree, manifest_arg, nearest_manifest, pixi_calls
 
 # Code that runs. Prose may legitimately quote any of these paths.
 CODE_SUFFIXES = {".py", ".sh", ".sbatch", ".ipynb", ".R"}
 JOB_SCRIPT_SUFFIXES = {".sh", ".sbatch"}
 
-PIXI_CALL = re.compile(rf"\bpixi\b.*\b({'|'.join(sorted(PIXI_ENV_COMMANDS))})\b")
 #: The one workspace a job may name: the main checkout's, as `$MAIN` passed in at submit. Any other path, relative
 #: or derived in the job (`git rev-parse --show-toplevel`), can resolve to the worktree itself.
-NAMED_MANIFEST = re.compile(r"""--manifest-path[= ]["']?\$\{?MAIN\}?/""")
+MAIN_MANIFEST = re.compile(r"\$\{?MAIN\}?/")
 
 
 def _pixi_on_found_workspace(script: str) -> bool:
     """Whether any command in ``script`` runs `pixi` on a workspace other than the main checkout's."""
-    for line in script.replace("\\\n", " ").splitlines():  # one line per command
-        line = re.sub(r"(^|\s)#.*", "", line)  # what the shell runs, not its comments
-        for command in re.split(r"&&|\|\||[;|&]", line):
-            if PIXI_CALL.search(command) and not NAMED_MANIFEST.search(command):
-                return True
-    return False
+    calls = pixi_calls(script.replace("\\\n", " "), comments=True)
+    if calls is None:  # unparsable: err towards blocking
+        return bool(re.search(rf"\bpixi\b.*\b({'|'.join(PIXI_ENV_COMMANDS)})\b", script))
+    return any(not MAIN_MANIFEST.match(manifest_arg(args) or "") for args in calls)
 
 
 def _rules(repo: str) -> list[tuple[re.Pattern, str, str]]:

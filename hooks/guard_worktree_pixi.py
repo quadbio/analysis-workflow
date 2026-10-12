@@ -20,62 +20,20 @@ Standard library only: it runs on whatever `python3` is on PATH.
 
 import json
 import re
-import shlex
 import sys
 from pathlib import Path
 
-from _repo import PIXI_ENV_COMMANDS, adopted, checkouts, is_root_of_worktree, nearest_manifest
-
-_BLOCKED = PIXI_ENV_COMMANDS
-# The first of these after `pixi` is the command, whatever global options precede it.
-_SUBCOMMANDS = _BLOCKED | {
-    "auth", "build", "clean", "completion", "config", "exec", "global", "import", "info", "init", "list",
-    "search", "self-update", "task", "tree", "upload", "workspace",
-}  # fmt: skip
-
-
-def _is_separator(tok: str) -> bool:
-    """A token made only of command separators (`;`, `&&`, `|`, newlines, parentheses)."""
-    return bool(tok) and set(tok) <= set(";&|()\n")
-
-
-def _pixi_calls(command: str) -> list[list[str]] | None:
-    """Argument lists of blocked `pixi` calls; None if unparsable."""
-    lexer = shlex.shlex(command, posix=True, punctuation_chars="();<>|&\n")
-    lexer.whitespace = " \t\r"  # newlines separate commands, so keep them as tokens
-    lexer.commenters = ""  # a `#` comment must not swallow the newline after it
-    lexer.whitespace_split = True
-    try:
-        tokens = list(lexer)
-    except ValueError:
-        return None
-    calls = []
-    for i, tok in enumerate(tokens):
-        if Path(tok).name != "pixi":
-            continue
-        args = []
-        for t in tokens[i + 1 :]:
-            if _is_separator(t):
-                break
-            args.append(t)
-        if next((a for a in args if a in _SUBCOMMANDS), None) in _BLOCKED:
-            calls.append(args)
-    return calls
+from _repo import PIXI_ENV_COMMANDS, adopted, checkouts, is_root_of_worktree, manifest_arg, nearest_manifest, pixi_calls
 
 
 def _manifest(args: list[str], cwd: Path) -> Path | None:
     """The manifest a call acts on; None if it is only known at run time."""
-    for i, a in enumerate(args):
-        if a in ("--manifest-path", "-m") and i + 1 < len(args):
-            path = Path(args[i + 1])
-            break
-        if a.startswith("--manifest-path="):
-            path = Path(a.split("=", 1)[1])
-            break
-    else:
+    named = manifest_arg(args)
+    if named is None:
         return nearest_manifest(cwd)
-    if any(c in str(path) for c in "$`"):
+    if any(c in named for c in "$`"):
         return None  # shell-expanded at run time, so not provably outside a worktree
+    path = Path(named)
     path = (cwd / path).resolve() if not path.is_absolute() else path.resolve()
     return path / "pixi.toml" if path.is_dir() else path
 
@@ -93,9 +51,9 @@ def main() -> int:
 
     if ".claude/worktrees" not in str(cwd) and "--manifest-path" not in command and " -m " not in command:
         return 0
-    calls = _pixi_calls(command)
+    calls = pixi_calls(command)
     if calls is None:  # unparsable: fall back to the conservative text match
-        pattern = rf"\bpixi\b.*\b({'|'.join(_BLOCKED)})\b"
+        pattern = rf"\bpixi\b.*\b({'|'.join(PIXI_ENV_COMMANDS)})\b"
         blocked = ".claude/worktrees" in str(cwd) and re.search(pattern, command) and _in_adopted_repo(cwd)
     else:
         manifests = [_manifest(args, cwd) for args in calls]
