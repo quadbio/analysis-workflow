@@ -62,6 +62,9 @@ into the human lane.
 
 - Another task's untracked outputs: `task_paths(<its _common.py>).outputs`. Read the main checkout by absolute
   path; never `cd` into it.
+- Batch-job scripts sit in `scripts/` beside the code they run. They get the main checkout as `$MAIN` from the
+  submit command, never hardcoded, run `pixi run --manifest-path "$MAIN/pixi.toml"`, and log to `PATHS.logs`. How
+  to submit them is the cluster's skill.
 - A figure that prints a number may carry `scripts/verify.py` re-deriving it. A code package's invariants belong in
   that package's tests.
 
@@ -71,6 +74,7 @@ into the human lane.
 3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off. Ask which subdirectory;
    record the path.
 4. `analysis-workflow check layout`, then push.
+5. The worktree is removed only once no batch job submitted from it is still queued or running.
 
 ## Data
 

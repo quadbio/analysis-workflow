@@ -28,7 +28,7 @@ claude --worktree <task>
    answer to the same question gets the next version, in a new session.
 2. It asks you which working object is current, then works in scripts; outputs go to the task directory.
 3. Results reach a shared working object only after you sign off the dry run.
-4. It opens a PR. Once it is merged, leave with `/exit` and remove the worktree.
+4. It opens a PR. Once it is merged and its batch jobs have finished, leave with `/exit` and remove the worktree.
 
 Notebooks and environment changes (`pixi install`, `pixi add`) stay with you, in the main checkout. With no
 analysis repo yet, ask Claude to start an analysis project: the skill sets one up.
