@@ -37,3 +37,25 @@ def adopted(checkout: Path) -> bool:
         return any(key.split("@")[0] == PLUGIN and on is True for key, on in enabled.items())
     except (OSError, ValueError, AttributeError):
         return False
+
+
+def nearest_manifest(directory: Path) -> Path:
+    """The `pixi.toml` pixi itself finds from ``directory``: the nearest at or above it."""
+    return next(
+        (d / "pixi.toml" for d in (directory, *directory.parents) if (d / "pixi.toml").exists()),
+        directory / "pixi.toml",
+    )
+
+
+def is_root_of_worktree(manifest: Path) -> bool:
+    """Whether ``manifest`` is the root workspace of a worktree of an adopted repo.
+
+    Its editable self-dependency (`path = "."`) would rebase the repo's package, and every path it
+    resolves, into the worktree. A task-local manifest is its own workspace.
+    """
+    if ".claude/worktrees" not in str(manifest):
+        return False
+    if manifest.exists() and 'path = "."' not in manifest.read_text(errors="ignore"):
+        return False
+    found = checkouts(manifest.parent)
+    return found is not None and adopted(found[0])

@@ -24,7 +24,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from _repo import adopted, checkouts
+from _repo import adopted, checkouts, is_root_of_worktree, nearest_manifest
 
 _MUTATING = {"install", "add", "lock", "upgrade", "update", "reinstall", "remove"}
 # These use the workspace environment, installing it first if it is missing.
@@ -75,20 +75,12 @@ def _manifest(args: list[str], cwd: Path) -> Path | None:
         if a.startswith("--manifest-path="):
             path = Path(a.split("=", 1)[1])
             break
-    else:  # pixi's own discovery: the nearest pixi.toml at or above cwd
-        return next((d / "pixi.toml" for d in (cwd, *cwd.parents) if (d / "pixi.toml").exists()), cwd / "pixi.toml")
+    else:
+        return nearest_manifest(cwd)
     if any(c in str(path) for c in "$`"):
         return None  # shell-expanded at run time, so not provably outside a worktree
     path = (cwd / path).resolve() if not path.is_absolute() else path.resolve()
     return path / "pixi.toml" if path.is_dir() else path
-
-
-def _is_root_of_worktree(manifest: Path) -> bool:
-    if ".claude/worktrees" not in str(manifest):
-        return False
-    if manifest.exists() and 'path = "."' not in manifest.read_text(errors="ignore"):
-        return False  # task-local workspace
-    return _in_adopted_repo(manifest.parent)
 
 
 def _in_adopted_repo(directory: Path) -> bool:
@@ -110,7 +102,7 @@ def main() -> int:
         blocked = ".claude/worktrees" in str(cwd) and re.search(pattern, command) and _in_adopted_repo(cwd)
     else:
         manifests = [_manifest(args, cwd) for args in calls]
-        blocked = any(_in_adopted_repo(cwd) if m is None else _is_root_of_worktree(m) for m in manifests)
+        blocked = any(_in_adopted_repo(cwd) if m is None else is_root_of_worktree(m) for m in manifests)
     if not blocked:
         return 0
 

@@ -6,6 +6,9 @@ write from a worktree lands in the worktree and disappears when it is removed, a
 usually gitignored, so git never warns. Absolute paths into a worktree, a temp dir or the checkout
 itself outlive what they point at, or break on the next machine.
 
+A job script written in a worktree must not run `pixi` on the workspace it finds itself: the job
+would build the root environment into the worktree, out of reach of the Bash pixi guard.
+
 It acts only in a repo that has adopted the plugin. Only the text being written is inspected, so
 pre-existing violations elsewhere in a file do not trip the hook; they surface when that line is next
 touched, which is when to fix them.
@@ -19,10 +22,16 @@ import re
 import sys
 from pathlib import Path
 
-from _repo import adopted, checkouts
+from _repo import adopted, checkouts, is_root_of_worktree, nearest_manifest
 
 # Code that runs. Prose may legitimately quote any of these paths.
 CODE_SUFFIXES = {".py", ".sh", ".sbatch", ".ipynb", ".R"}
+JOB_SCRIPT_SUFFIXES = {".sh", ".sbatch"}
+
+#: A non-comment line running `pixi` on whatever workspace it finds, rather than one named by `--manifest-path`.
+PIXI_ON_FOUND_WORKSPACE = re.compile(
+    r"^(?!\s*#)(?!.*--manifest-path).*\bpixi\b.*\b(run|shell|install|add|lock)\b", re.MULTILINE
+)
 
 
 def _rules(repo: str) -> list[tuple[re.Pattern, str, str]]:
@@ -65,6 +74,18 @@ def main() -> int:
     # Whatever this call would add: Write.content, Edit.new_string, NotebookEdit.new_source
     written = "\n".join(str(tool_input.get(key, "")) for key in ("content", "new_string", "new_source"))
     hits = [(what, fix) for pattern, what, fix in _rules(found[1].name) if pattern.search(written)]
+    if (
+        file_path.suffix in JOB_SCRIPT_SUFFIXES
+        and PIXI_ON_FOUND_WORKSPACE.search(written)
+        and is_root_of_worktree(nearest_manifest(file_path.parent))
+    ):
+        hits.append(
+            (
+                "a `pixi` call on the worktree's own workspace",
+                'jobs run on the main checkout\'s environment: pixi run --manifest-path "$MAIN/pixi.toml", '
+                "with MAIN passed at submit (sbatch --export=ALL,MAIN=<main checkout>)",
+            )
+        )
     if not hits:
         return 0
 

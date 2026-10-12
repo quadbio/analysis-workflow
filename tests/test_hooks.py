@@ -92,6 +92,25 @@ def test_pixi_allows_running_on_the_main_checkouts_environment(repo, pixi_worktr
     assert run("guard_worktree_pixi.py", bash(command, pixi_worktree)) == 0
 
 
+@pytest.mark.parametrize("line", ["pixi run python scripts/a.py", "srun -n1 pixi run python a.py", "pixi install"])
+def test_task_paths_blocks_job_scripts_running_pixi_on_the_worktree(pixi_worktree, line):
+    job = pixi_worktree / "analysis" / "t_v1" / "scripts" / "run.sh"
+    assert run("guard_task_paths.py", write(job, f"#!/bin/bash\n{line}\n")) == 2
+
+
+@pytest.mark.parametrize(
+    ("rel", "line"),
+    [
+        ("analysis/t_v1/scripts/run.sh", 'pixi run --manifest-path "$MAIN/pixi.toml" python scripts/a.py'),
+        ("analysis/t_v1/scripts/run.sh", "# not pixi run python a.py, see the README"),
+        ("analysis/bench_v1/run.sh", "pixi run python a.py"),  # task-local workspace
+        ("analysis/t_v1/scripts/run.py", 'print("pixi run python a.py")'),  # not a job script
+    ],
+)
+def test_task_paths_allows_job_scripts(pixi_worktree, rel, line):
+    assert run("guard_task_paths.py", write(pixi_worktree / rel, f"#!/bin/bash\n{line}\n")) == 0
+
+
 def test_pixi_allows_the_main_checkout(repo):
     main, _ = repo
     (main / "pixi.toml").write_text('[pypi-dependencies]\nmyproject = { path = ".", editable = true }\n')

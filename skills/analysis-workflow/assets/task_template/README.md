@@ -38,6 +38,7 @@ From the task directory, on the main checkout's environment. Batch jobs log to `
 PY="pixi run --manifest-path <main checkout>/pixi.toml python"
 $PY scripts/<step>.py
 LOGS=$($PY -c "from _common import PATHS; print(PATHS.ensure().logs)")
+sbatch --output="$LOGS/%x-%j.out" --export=ALL,MAIN=<main checkout> scripts/<step>.sh
 ```
 
 ## Notes
