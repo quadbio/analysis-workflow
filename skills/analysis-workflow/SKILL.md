@@ -26,6 +26,8 @@ Elsewhere:
 
 - Science code that several tasks need goes to a code repo, plotting code included. Figure code is copied only
   between versions of one task. The analysis repo's own package holds `FilePaths`, dataset versioning and a CLI.
+- A task that changes a code repo does so in a worktree of that repo, added from the same session:
+  `git -C <code repo> worktree add .claude/worktrees/<task> -b <branch>`.
 - Look before writing: existing packages (scverse, then its ecosystem), sibling code repos, earlier task directories.
 - A value becomes a constant in `_constants.py` when it is a stable project fact that several scripts would
   otherwise hardcode (a dataset root, a registered resource). Not task outputs, not the current working object
@@ -65,6 +67,8 @@ into the human lane.
 - Batch-job scripts sit in `scripts/` beside the code they run. They get the main checkout as `$MAIN` from the
   submit command, never hardcoded, run `pixi run --manifest-path "$MAIN/pixi.toml"`, and log to `PATHS.logs`. How
   to submit them is the cluster's skill.
+- Large single-cell computations (neighbors, UMAP, clustering on ≳100k cells) use rapids-singlecell over scanpy, in
+  a GPU job.
 - A figure that prints a number may carry `scripts/verify.py` re-deriving it. A code package's invariants belong in
   that package's tests.
 
@@ -98,8 +102,17 @@ into the human lane.
 ## Environments
 
 - The root `pixi.toml` is shared; reusability decides what goes in. A benchmark's candidates go task-local.
-- A worktree runs on the main checkout's environment: `pixi run --manifest-path <main>/pixi.toml …`.
-  `pixi install`/`add`/`lock` run only in the main checkout, by the human, one session at a time.
+- A worktree runs on the main checkout's environment: `pixi run --manifest-path <main>/pixi.toml …`. Only the human
+  installs it, in the main checkout, one session at a time. `pixi install` rewrites the path-dependency entries in
+  `pixi.lock`; that local diff is noise, so `git checkout pixi.lock` before pulling.
+- A task that changes `pixi.toml` relocks without installing. Commit `pixi.toml`, then lock in a temporary checkout
+  beside the main one, where the relative path dependencies resolve: `git worktree add --detach <main>/../<repo>-lock
+  HEAD`, `pixi lock --manifest-path <that checkout>/pixi.toml`, copy its `pixi.lock` into the task's worktree and
+  commit it, then `git worktree remove` the temporary checkout. The human installs after the merge.
+- That environment imports the repo's own package and any editable code repo from their main checkouts, so a
+  worktree's `src/` edits don't reach it. To run them, prepend that worktree's `src/` to `PYTHONPATH`.
+- A Jupyter kernel, or a direct call to an environment's `python`, skips pixi's activation: variables the
+  environment sets (such as `CONDA_PREFIX`) are missing unless the kernelspec passes them.
 - Verify an environment change with import smoke tests and `--help`, not by re-running analyses.
 
 ## Review
