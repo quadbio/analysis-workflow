@@ -4,7 +4,6 @@ requires = [ "hatchling" ]
 
 [project]
 name = "analysis-workflow"
-version = "0.2.1"
 description = "Task paths, additive AnnData write-back and layout checks for agent-run analysis repos."
 readme = "README.md"
 license = "MIT"
@@ -16,6 +15,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
+dynamic = [ "version" ]
 dependencies = [ "anndata>=0.12", "numpy", "pandas", "scipy", "typer", "zarr>=3" ]
 urls.Source = "https://github.com/quadbio/analysis-workflow"
 scripts.analysis-workflow = "analysis_workflow.cli:app"
@@ -24,6 +24,8 @@ scripts.analysis-workflow = "analysis_workflow.cli:app"
 dev = [ "pre-commit", "pytest" ]
 
 [tool.hatch]
+version.path = ".claude-plugin/plugin.json"
+version.pattern = '"version": "(?P<version>[^"]+)"'
 build.targets.wheel.packages = [ "src/analysis_workflow" ]
 
 [tool.ruff]
