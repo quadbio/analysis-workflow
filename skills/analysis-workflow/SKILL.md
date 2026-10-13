@@ -26,6 +26,8 @@ Elsewhere:
 
 - Science code that several tasks need goes to a code repo, plotting code included. Figure code is copied only
   between versions of one task. The analysis repo's own package holds `FilePaths`, dataset versioning and a CLI.
+- A helper in a code repo wraps bookkeeping (a loop over samples, keeping subsets aligned). A single library call that
+  is a scientific choice (which spatial graph to build) stays in the task's script, and its result goes in as input.
 - A task that changes a code repo does so in a worktree of that repo, added from the same session:
   `git -C <code repo> worktree add .claude/worktrees/<task> -b <branch>`.
 - Look before writing: existing packages (scverse, then its ecosystem), sibling code repos, earlier task directories.
