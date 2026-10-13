@@ -52,7 +52,7 @@ their committed `.claude/settings.json`, as [analysis_template](https://github.c
 
 ```toml
 [pypi-dependencies]
-analysis-workflow = { git = "https://github.com/quadbio/analysis-workflow", tag = "v0.2.1" }
+analysis-workflow = { git = "https://github.com/quadbio/analysis-workflow", tag = "v0.2.2" }
 ```
 
 ## Develop
@@ -70,8 +70,9 @@ For live package edits in an analysis repo, depend on the checkout instead:
 
 ## Release
 
-Bump `version` in both `pyproject.toml` and `.claude-plugin/plugin.json` (a test checks they agree), tag
-`vX.Y.Z`, then bump the `ref` in [quadbio/claude-plugins](https://github.com/quadbio/claude-plugins).
+Bump `version` in both `pyproject.toml` and `.claude-plugin/plugin.json` (a test checks they agree).
+That is the release: the marketplace follows `main`, users update when the version changes, and the merge tags
+`vX.Y.Z`, which analysis repos pin.
 
 ## License
 
