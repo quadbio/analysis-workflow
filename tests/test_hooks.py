@@ -207,8 +207,13 @@ def test_session_start_activates_the_main_environment(repo, fake_pixi, tmp_path)
 def test_session_start_without_an_installed_environment(repo, fake_pixi, tmp_path):
     _, worktree = repo
     path, prefix = fake_pixi
-    prefix.rmdir()
     env_file = tmp_path / "env.sh"
+    env_file.write_text("export OTHER_HOOK=1\n")
+    session_start(worktree, CLAUDE_ENV_FILE=str(env_file), **path)
+    prefix.rmdir()  # removed before a resume or compaction reruns the hook
     assert "No environment is active" in session_start(worktree, CLAUDE_ENV_FILE=str(env_file), **path)
-    assert not env_file.exists()
+    assert env_file.read_text() == "export OTHER_HOOK=1\n"
+    fresh = tmp_path / "fresh.sh"
+    session_start(worktree, CLAUDE_ENV_FILE=str(fresh), **path)
+    assert not fresh.exists()
     assert "No environment is active" in session_start(worktree, **path)  # no CLAUDE_ENV_FILE

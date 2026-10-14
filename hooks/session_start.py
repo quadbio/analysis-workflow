@@ -45,11 +45,12 @@ def activation(toplevel: Path, main: Path) -> dict[str, str]:
 
 
 def write_block(env_file: Path, variables: dict[str, str]) -> None:
-    """Replace this hook's block in ``env_file``, keeping what other hooks wrote."""
+    """Replace this hook's block in ``env_file``, or drop it if ``variables`` is empty; keep what other hooks wrote."""
     old = env_file.read_text() if env_file.exists() else ""
     kept = re.sub(rf"{re.escape(BEGIN)}\n.*?{re.escape(END)}\n", "", old, flags=re.DOTALL)
     exports = "".join(f"export {k}={shlex.quote(v)}\n" for k, v in variables.items() if k.isidentifier())
-    env_file.write_text(f"{kept}{BEGIN}\n{exports}{END}\n")
+    if old or exports:
+        env_file.write_text(f"{kept}{BEGIN}\n{exports}{END}\n" if exports else kept)
 
 
 def main() -> int:
@@ -61,8 +62,9 @@ def main() -> int:
     toplevel, main_checkout = found
     env_file = os.environ.get("CLAUDE_ENV_FILE")
     variables = activation(toplevel, main_checkout) if env_file and (main_checkout / "pixi.toml").exists() else {}
+    if env_file:
+        write_block(Path(env_file), variables)  # a failed refresh on resume or compaction drops a stale block
     if variables:
-        write_block(Path(env_file), variables)
         print(f"\nEvery Bash command runs on `{variables['CONDA_PREFIX']}`: run `python …` directly.")
     else:
         print(f"\nNo environment is active: run `pixi run --manifest-path {main_checkout}/pixi.toml --as-is …`.")
