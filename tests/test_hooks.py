@@ -87,10 +87,27 @@ def test_pixi_allows(pixi_worktree, command, where):
     assert run("guard_worktree_pixi.py", bash(command, pixi_worktree / where)) == 0
 
 
-def test_pixi_allows_running_on_the_main_checkouts_environment(repo, pixi_worktree):
+def test_pixi_allows_running_on_the_main_checkouts_environment_as_is(repo, pixi_worktree):
     main, _ = repo
-    command = f"pixi run --manifest-path {main}/pixi.toml python x.py"
+    command = f"pixi run --manifest-path {main}/pixi.toml --as-is python x.py"
     assert run("guard_worktree_pixi.py", bash(command, pixi_worktree)) == 0
+    lock_checkout = main.parent / f"{main.name}-lock"  # where a task changes the environment
+    assert (
+        run("guard_worktree_pixi.py", bash(f"pixi lock --manifest-path {lock_checkout}/pixi.toml", pixi_worktree)) == 0
+    )
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        "run --manifest-path {main}/pixi.toml python x.py",
+        "install --manifest-path {main}/pixi.toml",
+        "shell-hook -m {main}",
+    ],
+)
+def test_pixi_blocks_main_checkouts_environment_unless_as_is(repo, pixi_worktree, call):
+    main, _ = repo
+    assert run("guard_worktree_pixi.py", bash("pixi " + call.format(main=main), pixi_worktree)) == 2
 
 
 @pytest.mark.parametrize(
@@ -107,6 +124,7 @@ def test_pixi_allows_running_on_the_main_checkouts_environment(repo, pixi_worktr
         'pixi run python a.py  # TODO: --manifest-path "$MAIN/pixi.toml"',
         'echo "starting # job"; pixi run python a.py',  # a quoted hash is no comment
         'pixi run python a.py --manifest-path "$MAIN/pixi.toml"',  # after the task, the flag is the task's
+        'pixi run --manifest-path "$MAIN/pixi.toml" python a.py',  # without --as-is it may install into main
     ],
 )
 def test_task_paths_blocks_job_scripts_running_pixi_on_the_worktree(pixi_worktree, line):
@@ -117,8 +135,8 @@ def test_task_paths_blocks_job_scripts_running_pixi_on_the_worktree(pixi_worktre
 @pytest.mark.parametrize(
     ("rel", "line"),
     [
-        ("analysis/t_v1/scripts/run.sh", 'pixi run --manifest-path "$MAIN/pixi.toml" python scripts/a.py'),
-        ("analysis/t_v1/scripts/run.sh", "pixi run --manifest-path=${MAIN}/pixi.toml python scripts/a.py"),
+        ("analysis/t_v1/scripts/run.sh", 'pixi run --manifest-path "$MAIN/pixi.toml" --as-is python scripts/a.py'),
+        ("analysis/t_v1/scripts/run.sh", "pixi run --as-is --manifest-path=${MAIN}/pixi.toml python scripts/a.py"),
         ("analysis/t_v1/scripts/run.sh", "# not pixi run python a.py, see the README"),
         ("analysis/bench_v1/run.sh", "pixi run python a.py"),  # task-local workspace
         ("analysis/t_v1/scripts/run.py", 'print("pixi run python a.py")'),  # not a job script
@@ -172,7 +190,12 @@ def fake_pixi(repo, tmp_path):
     prefix.mkdir()
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    variables = {"CONDA_PREFIX": str(prefix), "PATH": f"{prefix}/bin:/usr/bin", "WITH_QUOTE": "it's"}
+    variables = {
+        "CONDA_PREFIX": str(prefix),
+        "PATH": f"{prefix}/bin:/usr/bin",
+        "WITH_QUOTE": "it's",
+        "PYTHONPATH": "/act",
+    }
     pixi = bin_dir / "pixi"
     pixi.write_text(f"#!{sys.executable}\nprint({json.dumps(json.dumps({'environment_variables': variables}))})\n")
     pixi.chmod(0o755)
@@ -197,11 +220,11 @@ def test_session_start_activates_the_main_environment(repo, fake_pixi, tmp_path)
     assert text.count("OTHER_HOOK") == text.count("analysis-workflow: main environment") == 1
     assert sourced(env_file, "CONDA_PREFIX") == str(prefix)
     assert sourced(env_file, "WITH_QUOTE") == "it's"
-    assert sourced(env_file, "PYTHONPATH").split(os.pathsep)[0] == str(worktree / "src")
+    assert sourced(env_file, "PYTHONPATH") == f"{worktree / 'src'}{os.pathsep}/act"  # activation's value kept
 
     main_env = tmp_path / "main.sh"
     session_start(main, CLAUDE_ENV_FILE=str(main_env), **path)
-    assert "PYTHONPATH" not in main_env.read_text()
+    assert sourced(main_env, "PYTHONPATH") == "/act"
 
 
 def test_session_start_without_an_installed_environment(repo, fake_pixi, tmp_path):

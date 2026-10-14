@@ -40,7 +40,8 @@ def activation(toplevel: Path, main: Path) -> dict[str, str]:
     if not Path(variables.get("CONDA_PREFIX", "")).is_dir():
         return {}
     if toplevel != main and (toplevel / "src").is_dir():
-        variables["PYTHONPATH"] = os.pathsep.join(filter(None, [str(toplevel / "src"), os.environ.get("PYTHONPATH")]))
+        outer = variables.get("PYTHONPATH", os.environ.get("PYTHONPATH"))  # activation's value wins, as in pixi
+        variables["PYTHONPATH"] = os.pathsep.join(filter(None, [str(toplevel / "src"), outer]))
     return variables
 
 

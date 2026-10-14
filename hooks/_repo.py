@@ -121,3 +121,9 @@ def manifest_arg(args: list[str]) -> str | None:
         if command == "run" and not a.startswith("-"):
             return None
     return None
+
+
+def as_is(args: list[str]) -> bool:
+    """Whether a `pixi` call uses an environment as it stands: `run`, `shell` or `shell-hook` with `--as-is`."""
+    command = next((a for a in args if a in PIXI_SUBCOMMANDS), None)
+    return command in {"run", "shell", "shell-hook"} and "--as-is" in args
