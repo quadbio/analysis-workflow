@@ -107,10 +107,14 @@ into the human lane.
   `python …` directly. Batch jobs, and anything run outside a session, use
   `pixi run --manifest-path <main>/pixi.toml --as-is …`; without `--as-is`, pixi relocks or installs into main
   whenever its manifest or lock is ahead of the environment.
-- A task that changes `pixi.toml` relocks without installing. Commit `pixi.toml`, then lock in a temporary checkout
-  beside the main one, where the relative path dependencies resolve: `git worktree add --detach <main>/../<repo>-lock
-  HEAD`, `pixi lock --manifest-path <that checkout>/pixi.toml`, copy its `pixi.lock` into the task's worktree and
-  commit it, then `git worktree remove` the temporary checkout. The human installs after the merge.
+- A task that changes `pixi.toml` locks, installs and tests it in a temporary checkout beside the main one, where
+  the relative path dependencies resolve; main's environment stays untouched. Commit `pixi.toml`, then
+  `git worktree add --detach <main>-lock HEAD` (`<main>` is the main checkout's path), and pass
+  `--manifest-path <main>-lock/pixi.toml` to `pixi lock`, `pixi install --frozen` and the checks'
+  `pixi run --as-is`. Then, in this order: copy its `pixi.lock` into the task's worktree, check
+  `git diff --stat pixi.lock`, commit, and `git worktree remove --force` the temporary checkout. The repo's settings
+  list `../<main checkout's directory>-lock` under `permissions.additionalDirectories`, so the copy needs no
+  approval. After the merge the human pulls and runs `pixi install` in the main checkout.
 - The hook puts the worktree's `src/` first on `PYTHONPATH`, so the repo's own package is imported from the
   worktree. An editable code repo still imports from its main checkout; to run a code-repo worktree's edits, prepend
   its `src/` too. Paths to shared data come from `main_checkout(__file__)`, never from `__file__` alone, which

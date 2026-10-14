@@ -30,7 +30,8 @@ claude --worktree <task>
 3. Results reach a shared working object only after you sign off the dry run.
 4. It opens a PR. Once it is merged and its batch jobs have finished, leave with `/exit` and remove the worktree.
 
-Notebooks and environment changes (`pixi install`, `pixi add`) stay with you, in the main checkout. With no
+Notebooks stay with you, in the main checkout. A task that changes the environment locks, installs and tests
+it in a temporary checkout beside the main one; after its merge you pull and run `pixi install` there. With no
 analysis repo yet, ask Claude to start an analysis project: the skill sets one up.
 
 ## Install
@@ -44,9 +45,12 @@ their committed `.claude/settings.json`, as [analysis_template](https://github.c
   "extraKnownMarketplaces": {
     "quadbio": { "source": { "source": "github", "repo": "quadbio/claude-plugins" } }
   },
-  "enabledPlugins": { "analysis-workflow@quadbio": true }
+  "enabledPlugins": { "analysis-workflow@quadbio": true },
+  "permissions": { "additionalDirectories": ["../<repo>-lock"] }
 }
 ```
+
+`<repo>` is the main checkout's directory name: a task changing the environment locks it in `../<repo>-lock`.
 
 **The package**, in the analysis repo's `pixi.toml` (its lock pins the commit; `pixi update` moves it):
 

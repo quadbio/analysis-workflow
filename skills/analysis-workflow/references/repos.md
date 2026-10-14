@@ -32,6 +32,7 @@ their other repos). Then:
    `FilePaths.ROOT` from `main_checkout(__file__)`, as the template does, so data paths don't follow a worktree.
 3. `.gitignore`: add `*.zarr` and the template's blocks from `# Data never enters git` to the end. Their rules
    match inside every task directory, and their re-includes keep READMEs, placeholders and task evidence tracked.
+   `.gitattributes`: the template's `pixi.lock` line, so a lock conflict keeps one side whole.
 4. Remove any notebook-output stripping (`nbstripout` in `.gitattributes`, its install step, its CI check).
 5. Copy the template's `REVIEW_GUIDE.md`, adding the repo's own rules under its last heading.
 6. In `AGENTS.md`, one short section naming the plugin and where the working objects live; delete restated rules.

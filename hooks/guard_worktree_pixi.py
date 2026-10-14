@@ -8,7 +8,7 @@ blocked too: a worktree runs on the main checkout's environment. Allowed through
 
 - a task-local manifest (no `path = "."`), which is its own workspace;
 - `--manifest-path` pointing outside `.claude/worktrees` (the main checkout, or a sibling
-  checkout used to regenerate the lock), where `path = "."` resolves correctly.
+  checkout used to change the environment), where `path = "."` resolves correctly.
 
 It acts only in a repo that has adopted the plugin. Any unquoted `pixi` token counts, wherever it
 stands; words inside quoted text (a PR body) do not. The guard is against accidents, not obfuscation,
@@ -69,8 +69,8 @@ def main() -> int:
         "and every path it resolves, into this worktree.\n"
         "  - to run something: python <script> (this session runs on the main checkout's environment),\n"
         "    or pixi run --manifest-path <main checkout>/pixi.toml --as-is python <script>\n"
-        "  - to change the environment: relock in a temporary checkout beside the main one (skill, Environments);\n"
-        "    installing is the human's, in the MAIN checkout.",
+        "  - to change the environment: lock and install it in a temporary checkout beside the main one\n"
+        "    (skill, Environments); installing the MAIN checkout's environment is the human's.",
         file=sys.stderr,
     )
     return 2
