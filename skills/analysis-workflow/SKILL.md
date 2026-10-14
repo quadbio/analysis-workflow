@@ -118,4 +118,4 @@ into the human lane.
 ## Review
 
 Each repo keeps a `REVIEW_GUIDE.md` for reviewers that cannot load this plugin; its generic half is
-`assets/REVIEW_GUIDE.md`.
+[the template's](https://github.com/quadbio/analysis_template/blob/main/%7B%7Bcookiecutter.project_name%7D%7D/REVIEW_GUIDE.md).
