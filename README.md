@@ -8,7 +8,7 @@ shared AnnData zarr *working object* per dataset that grows by additive write-ba
 | Part | What it does |
 | --- | --- |
 | `skills/analysis-workflow/` | The conventions: repo model, human and agent lanes, task lifecycle, `data/` layout, working objects, environments. Loaded on demand. |
-| `hooks/` | Always-on core rules at session start; blocks worktree-unsafe output paths and `pixi install` in a worktree. |
+| `hooks/` | Always-on core rules and the main checkout's environment at session start; blocks worktree-unsafe output paths and `pixi install` in a worktree. |
 | `src/analysis_workflow/` | `task_paths`, `main_checkout`, `commit_adata`, `keys_on_disk`, `analyze_anndata_size`, and `analysis-workflow check layout`. |
 
 It assumes analysis repos made from [analysis_template](https://github.com/quadbio/analysis_template)
@@ -30,7 +30,8 @@ claude --worktree <task>
 3. Results reach a shared working object only after you sign off the dry run.
 4. It opens a PR. Once it is merged and its batch jobs have finished, leave with `/exit` and remove the worktree.
 
-Notebooks and environment changes (`pixi install`, `pixi add`) stay with you, in the main checkout. With no
+Notebooks stay with you, in the main checkout. A task that changes the environment locks, installs and tests
+it in a temporary checkout beside the main one; after its merge you pull and run `pixi install` there. With no
 analysis repo yet, ask Claude to start an analysis project: the skill sets one up.
 
 ## Install
@@ -44,9 +45,12 @@ their committed `.claude/settings.json`, as [analysis_template](https://github.c
   "extraKnownMarketplaces": {
     "quadbio": { "source": { "source": "github", "repo": "quadbio/claude-plugins" } }
   },
-  "enabledPlugins": { "analysis-workflow@quadbio": true }
+  "enabledPlugins": { "analysis-workflow@quadbio": true },
+  "permissions": { "additionalDirectories": ["../<repo>-lock"] }
 }
 ```
+
+`<repo>` is the main checkout's directory name: a task changing the environment locks it in `../<repo>-lock`.
 
 **The package**, in the analysis repo's `pixi.toml` (its lock pins the commit; `pixi update` moves it):
 

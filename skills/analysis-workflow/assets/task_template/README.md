@@ -36,7 +36,7 @@ From the task directory, on the main checkout's environment. Batch jobs get `MAI
 log to `PATHS.logs`:
 
 ```bash
-PY="pixi run --manifest-path <main checkout>/pixi.toml python"
+PY="pixi run --manifest-path <main checkout>/pixi.toml --as-is python"
 $PY scripts/<step>.py
 LOGS=$($PY -c "from _common import PATHS; print(PATHS.ensure().logs)")
 ```

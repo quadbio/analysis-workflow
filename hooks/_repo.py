@@ -5,6 +5,8 @@ plugin can be enabled for a user (which the skill's repo set-up needs) without t
 Standard library only: it runs on whatever `python3` is on PATH.
 """
 
+from __future__ import annotations
+
 import json
 import shlex
 import subprocess
@@ -107,15 +109,38 @@ def pixi_calls(command: str, comments: bool = False) -> list[list[str]] | None:
     return calls
 
 
-def manifest_arg(args: list[str]) -> str | None:
-    """The `--manifest-path` a pixi call passes, if any. In `pixi run`, arguments after the task are the task's."""
+#: Options of `pixi run`, `shell` and `shell-hook` that take a value (from their `--help`).
+PIXI_VALUE_OPTIONS = frozenset(
+    {"-e", "--environment", "-p", "--platform", "-m", "--manifest-path", "-w", "--workspace", "-s", "--script",
+     "--shell", "--config-file", "--auth-file", "--concurrent-downloads", "--concurrent-solves", "--pinning-strategy",
+     "--pypi-keyring-provider", "--tls-root-certs", "--color", "--change-ps1"}
+)  # fmt: skip
+
+
+def pixi_options(args: list[str]) -> tuple[str | None, list[str]]:
+    """A `pixi` call's subcommand and its own options. In `pixi run`, arguments after the task are the task's."""
     command = next((a for a in args if a in PIXI_SUBCOMMANDS), None)
-    rest = args[args.index(command) + 1 :] if command else args
-    for i, a in enumerate(rest):
+    options, value_next = [], False
+    for a in args[args.index(command) + 1 :] if command else args:
+        if command == "run" and not value_next and not a.startswith("-"):
+            break
+        options.append(a)
+        value_next = a in PIXI_VALUE_OPTIONS
+    return command, options
+
+
+def manifest_arg(args: list[str]) -> str | None:
+    """The `--manifest-path` a pixi call passes, if any."""
+    _, options = pixi_options(args)
+    for i, a in enumerate(options):
         if a in ("--manifest-path", "-m"):
-            return rest[i + 1] if i + 1 < len(rest) else None
+            return options[i + 1] if i + 1 < len(options) else None
         if a.startswith("--manifest-path="):
             return a.split("=", 1)[1]
-        if command == "run" and not a.startswith("-"):
-            return None
     return None
+
+
+def as_is(args: list[str]) -> bool:
+    """Whether a `pixi` call uses an environment as it stands: `run`, `shell` or `shell-hook` with `--as-is`."""
+    command, options = pixi_options(args)
+    return command in {"run", "shell", "shell-hook"} and "--as-is" in options

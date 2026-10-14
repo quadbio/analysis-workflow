@@ -22,7 +22,16 @@ import re
 import sys
 from pathlib import Path
 
-from _repo import PIXI_ENV_COMMANDS, adopted, checkouts, is_root_of_worktree, manifest_arg, nearest_manifest, pixi_calls
+from _repo import (
+    PIXI_ENV_COMMANDS,
+    adopted,
+    as_is,
+    checkouts,
+    is_root_of_worktree,
+    manifest_arg,
+    nearest_manifest,
+    pixi_calls,
+)
 
 # Code that runs. Prose may legitimately quote any of these paths.
 CODE_SUFFIXES = {".py", ".sh", ".sbatch", ".ipynb", ".R"}
@@ -33,12 +42,12 @@ JOB_SCRIPT_SUFFIXES = {".sh", ".sbatch"}
 MAIN_MANIFEST = re.compile(r"\$\{?MAIN\}?/")
 
 
-def _pixi_on_found_workspace(script: str) -> bool:
-    """Whether any command in ``script`` runs `pixi` on a workspace other than the main checkout's."""
+def _pixi_not_as_is_on_main(script: str) -> bool:
+    """Whether any command in ``script`` runs `pixi` other than as-is on the main checkout's workspace."""
     calls = pixi_calls(script.replace("\\\n", " "), comments=True)
     if calls is None:  # unparsable: err towards blocking
         return bool(re.search(rf"\bpixi\b.*\b({'|'.join(PIXI_ENV_COMMANDS)})\b", script))
-    return any(not MAIN_MANIFEST.match(manifest_arg(args) or "") for args in calls)
+    return any(not (MAIN_MANIFEST.match(manifest_arg(args) or "") and as_is(args)) for args in calls)
 
 
 def _rules(repo: str) -> list[tuple[re.Pattern, str, str]]:
@@ -83,13 +92,13 @@ def main() -> int:
     hits = [(what, fix) for pattern, what, fix in _rules(found[1].name) if pattern.search(written)]
     if (
         file_path.suffix in JOB_SCRIPT_SUFFIXES
-        and _pixi_on_found_workspace(written)
+        and _pixi_not_as_is_on_main(written)
         and is_root_of_worktree(nearest_manifest(file_path.parent))
     ):
         hits.append(
             (
-                "a `pixi` call on the worktree's own workspace",
-                'jobs run on the main checkout\'s environment: pixi run --manifest-path "$MAIN/pixi.toml", '
+                "a `pixi` call other than as-is on the main checkout's workspace",
+                'jobs run on the main checkout\'s environment: pixi run --manifest-path "$MAIN/pixi.toml" --as-is, '
                 "with MAIN passed in at submit",
             )
         )

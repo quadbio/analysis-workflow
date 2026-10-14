@@ -28,9 +28,11 @@ their other repos). Then:
 1. Commit `.claude/settings.json` enabling `analysis-workflow@quadbio` (snippet: the plugin README); the hooks act
    only in repos that do. Remove repo-level copies of its hooks.
 2. Add `analysis-workflow` to the root `pixi.toml`. Delete local copies of `task_paths`, `main_checkout`,
-   `commit_adata` and `_task_template/`; leave their callers, which get fixed when next re-run.
+   `commit_adata` and `_task_template/`; leave their callers, which get fixed when next re-run. Take
+   `FilePaths.ROOT` from `main_checkout(__file__)`, as the template does, so data paths don't follow a worktree.
 3. `.gitignore`: add `*.zarr` and the template's blocks from `# Data never enters git` to the end. Their rules
    match inside every task directory, and their re-includes keep READMEs, placeholders and task evidence tracked.
+   `.gitattributes`: the template's `pixi.lock` line, so a lock conflict keeps one side whole.
 4. Remove any notebook-output stripping (`nbstripout` in `.gitattributes`, its install step, its CI check).
 5. Copy the template's `REVIEW_GUIDE.md`, adding the repo's own rules under its last heading.
 6. In `AGENTS.md`, one short section naming the plugin and where the working objects live; delete restated rules.

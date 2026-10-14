@@ -7,8 +7,9 @@ into the worktree. `pixi run` and `pixi shell` install that environment on first
 blocked too: a worktree runs on the main checkout's environment. Allowed through:
 
 - a task-local manifest (no `path = "."`), which is its own workspace;
-- `--manifest-path` pointing outside `.claude/worktrees` (the main checkout, or a sibling
-  checkout used to regenerate the lock), where `path = "."` resolves correctly.
+- `--manifest-path` pointing outside `.claude/worktrees`, where `path = "."` resolves correctly: a sibling
+  checkout used to change the environment, or the main checkout with `--as-is` (`run`, `shell`, `shell-hook`),
+  since anything else relocks or installs into main when its manifest or lock is ahead of its environment.
 
 It acts only in a repo that has adopted the plugin. Any unquoted `pixi` token counts, wherever it
 stands; words inside quoted text (a PR body) do not. The guard is against accidents, not obfuscation,
@@ -18,12 +19,23 @@ PreToolUse hook (Bash): exit 2 blocks the call and shows stderr to the agent.
 Standard library only: it runs on whatever `python3` is on PATH.
 """
 
+from __future__ import annotations
+
 import json
 import re
 import sys
 from pathlib import Path
 
-from _repo import PIXI_ENV_COMMANDS, adopted, checkouts, is_root_of_worktree, manifest_arg, nearest_manifest, pixi_calls
+from _repo import (
+    PIXI_ENV_COMMANDS,
+    adopted,
+    as_is,
+    checkouts,
+    is_root_of_worktree,
+    manifest_arg,
+    nearest_manifest,
+    pixi_calls,
+)
 
 
 def _manifest(args: list[str], cwd: Path) -> Path | None:
@@ -52,12 +64,28 @@ def main() -> int:
     if ".claude/worktrees" not in str(cwd) and "--manifest-path" not in command and " -m " not in command:
         return 0
     calls = pixi_calls(command)
+    on_main = False
     if calls is None:  # unparsable: fall back to the conservative text match
         pattern = rf"\bpixi\b.*\b({'|'.join(PIXI_ENV_COMMANDS)})\b"
         blocked = ".claude/worktrees" in str(cwd) and re.search(pattern, command) and _in_adopted_repo(cwd)
     else:
         manifests = [_manifest(args, cwd) for args in calls]
         blocked = any(_in_adopted_repo(cwd) if m is None else is_root_of_worktree(m) for m in manifests)
+        found = checkouts(cwd) if ".claude/worktrees" in str(cwd) else None
+        if found and adopted(found[0]):
+            main_manifest = (found[1] / "pixi.toml").resolve()
+            on_main = any(_manifest(args, cwd) == main_manifest and not as_is(args) for args in calls)
+    if on_main and not blocked:
+        print(
+            "Refused: a `pixi` call on the main checkout's environment without `--as-is`, from a worktree.\n"
+            "It would relock or install into main whenever main's manifest or lock is ahead of its environment.\n"
+            "  - to run something: python <script> (this session runs on the main checkout's environment),\n"
+            "    or pixi run --manifest-path <main checkout>/pixi.toml --as-is python <script>\n"
+            "  - to change the environment: lock and install it in a temporary checkout beside the main one\n"
+            "    (skill, Environments); installing the MAIN checkout's environment is the human's.",
+            file=sys.stderr,
+        )
+        return 2
     if not blocked:
         return 0
 
@@ -65,9 +93,10 @@ def main() -> int:
         "Refused: a `pixi` command that builds or changes an environment on a worktree's root workspace.\n"
         "The root manifest's editable self-dependency (`path = \".\"`) would rebase the repo's package,\n"
         "and every path it resolves, into this worktree.\n"
-        "  - to run something: pixi run --manifest-path <main checkout>/pixi.toml python <script>\n"
-        "  - to change the environment: relock in a temporary checkout beside the main one (skill, Environments);\n"
-        "    installing is the human's, in the MAIN checkout.",
+        "  - to run something: python <script> (this session runs on the main checkout's environment),\n"
+        "    or pixi run --manifest-path <main checkout>/pixi.toml --as-is python <script>\n"
+        "  - to change the environment: lock and install it in a temporary checkout beside the main one\n"
+        "    (skill, Environments); installing the MAIN checkout's environment is the human's.",
         file=sys.stderr,
     )
     return 2
