@@ -8,7 +8,7 @@ shared AnnData zarr *working object* per dataset that grows by additive write-ba
 | Part | What it does |
 | --- | --- |
 | `skills/analysis-workflow/` | The conventions: repo model, human and agent lanes, task lifecycle, `data/` layout, working objects, environments. Loaded on demand. |
-| `hooks/` | Always-on core rules at session start; blocks worktree-unsafe output paths and `pixi install` in a worktree. |
+| `hooks/` | Always-on core rules and the main checkout's environment at session start; blocks worktree-unsafe output paths and `pixi install` in a worktree. |
 | `src/analysis_workflow/` | `task_paths`, `main_checkout`, `commit_adata`, `keys_on_disk`, `analyze_anndata_size`, and `analysis-workflow check layout`. |
 
 It assumes analysis repos made from [analysis_template](https://github.com/quadbio/analysis_template)

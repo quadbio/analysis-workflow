@@ -8,5 +8,6 @@ analysis code, outputs or data. Always:
    newest file name.
 4. Shared objects grow by addition only (`commit_adata`), and only after sign-off on the dry run.
 5. Agents never write to `data/<dataset>/results/` or the central `figures/`; those are the human lane.
-6. A worktree, and every batch job submitted from it, runs on the main checkout's environment
-   (`pixi run --manifest-path <main>/pixi.toml --as-is ...`); only the human installs it, in the main checkout.
+6. A worktree, and every batch job submitted from it, runs on the main checkout's environment; only the human
+   installs it, in the main checkout. The line below says whether it is active in every Bash command. Batch jobs
+   run `pixi run --manifest-path "$MAIN/pixi.toml" --as-is ...`.

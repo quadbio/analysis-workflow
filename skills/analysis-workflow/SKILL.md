@@ -102,15 +102,19 @@ into the human lane.
 ## Environments
 
 - The root `pixi.toml` is shared; reusability decides what goes in. A benchmark's candidates go task-local.
-- A worktree runs on the main checkout's environment: `pixi run --manifest-path <main>/pixi.toml --as-is …`.
-  Without `--as-is`, pixi relocks or installs into main whenever its manifest or lock is ahead of the environment.
-  Only the human installs it, in the main checkout, one session at a time.
+- A worktree runs on the main checkout's environment; only the human installs it, in the main checkout, one
+  session at a time. The session-start hook activates it for every Bash command, subagents' included: run
+  `python …` directly. Batch jobs, and anything run outside a session, use
+  `pixi run --manifest-path <main>/pixi.toml --as-is …`; without `--as-is`, pixi relocks or installs into main
+  whenever its manifest or lock is ahead of the environment.
 - A task that changes `pixi.toml` relocks without installing. Commit `pixi.toml`, then lock in a temporary checkout
   beside the main one, where the relative path dependencies resolve: `git worktree add --detach <main>/../<repo>-lock
   HEAD`, `pixi lock --manifest-path <that checkout>/pixi.toml`, copy its `pixi.lock` into the task's worktree and
   commit it, then `git worktree remove` the temporary checkout. The human installs after the merge.
-- That environment imports the repo's own package and any editable code repo from their main checkouts, so a
-  worktree's `src/` edits don't reach it. To run them, prepend that worktree's `src/` to `PYTHONPATH`.
+- The hook puts the worktree's `src/` first on `PYTHONPATH`, so the repo's own package is imported from the
+  worktree. An editable code repo still imports from its main checkout; to run a code-repo worktree's edits, prepend
+  its `src/` too. Paths to shared data come from `main_checkout(__file__)`, never from `__file__` alone, which
+  follows the worktree.
 - A Jupyter kernel, or a direct call to an environment's `python`, skips pixi's activation: variables the
   environment sets (such as `CONDA_PREFIX`) are missing unless the kernelspec passes them.
 - Verify an environment change with import smoke tests and `--help`, not by re-running analyses.

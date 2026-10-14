@@ -67,7 +67,8 @@ def main() -> int:
         "Refused: a `pixi` command that builds or changes an environment on a worktree's root workspace.\n"
         "The root manifest's editable self-dependency (`path = \".\"`) would rebase the repo's package,\n"
         "and every path it resolves, into this worktree.\n"
-        "  - to run something: pixi run --manifest-path <main checkout>/pixi.toml --as-is python <script>\n"
+        "  - to run something: python <script> (this session runs on the main checkout's environment),\n"
+        "    or pixi run --manifest-path <main checkout>/pixi.toml --as-is python <script>\n"
         "  - to change the environment: relock in a temporary checkout beside the main one (skill, Environments);\n"
         "    installing is the human's, in the MAIN checkout.",
         file=sys.stderr,
