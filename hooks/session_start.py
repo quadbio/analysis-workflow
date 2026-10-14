@@ -31,7 +31,7 @@ def activation(toplevel: Path, main: Path) -> dict[str, str]:
                 ["pixi", "shell-hook", "--manifest-path", str(main / "pixi.toml"), "--as-is", "--json"],
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=20,  # under the hook's own 30 s in hooks.json
                 check=True,
             ).stdout
         )["environment_variables"]

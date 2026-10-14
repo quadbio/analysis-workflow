@@ -113,7 +113,7 @@ def pixi_calls(command: str, comments: bool = False) -> list[list[str]] | None:
 PIXI_VALUE_OPTIONS = frozenset(
     {"-e", "--environment", "-p", "--platform", "-m", "--manifest-path", "-w", "--workspace", "-s", "--script",
      "--shell", "--config-file", "--auth-file", "--concurrent-downloads", "--concurrent-solves", "--pinning-strategy",
-     "--pypi-keyring-provider", "--tls-root-certs", "--color"}
+     "--pypi-keyring-provider", "--tls-root-certs", "--color", "--change-ps1"}
 )  # fmt: skip
 
 
