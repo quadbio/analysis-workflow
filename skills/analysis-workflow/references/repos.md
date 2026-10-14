@@ -33,5 +33,7 @@ their other repos). Then:
    match inside every task directory, and their re-includes keep READMEs, placeholders and task evidence tracked.
 4. Remove any notebook-output stripping (`nbstripout` in `.gitattributes`, its install step, its CI check).
 5. Copy `assets/REVIEW_GUIDE.md`, adding the repo's own rules under its last heading.
-6. In `AGENTS.md`, one short section naming the plugin and where the working objects live; delete restated rules.
+6. The repo's instructions live in one `AGENTS.md`: rename a `CLAUDE.md` to it, or merge one in, since Claude Code
+   reads `AGENTS.md` only when there is no `CLAUDE.md`. In it, one short section naming the plugin and where the
+   working objects live; delete restated rules.
 7. Optionally `uvx cruft link https://github.com/quadbio/analysis_template` to receive template updates.
