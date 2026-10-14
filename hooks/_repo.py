@@ -5,6 +5,8 @@ plugin can be enabled for a user (which the skill's repo set-up needs) without t
 Standard library only: it runs on whatever `python3` is on PATH.
 """
 
+from __future__ import annotations
+
 import json
 import shlex
 import subprocess

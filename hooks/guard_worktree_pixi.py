@@ -18,6 +18,8 @@ PreToolUse hook (Bash): exit 2 blocks the call and shows stderr to the agent.
 Standard library only: it runs on whatever `python3` is on PATH.
 """
 
+from __future__ import annotations
+
 import json
 import re
 import sys
@@ -65,7 +67,7 @@ def main() -> int:
         "Refused: a `pixi` command that builds or changes an environment on a worktree's root workspace.\n"
         "The root manifest's editable self-dependency (`path = \".\"`) would rebase the repo's package,\n"
         "and every path it resolves, into this worktree.\n"
-        "  - to run something: pixi run --manifest-path <main checkout>/pixi.toml python <script>\n"
+        "  - to run something: pixi run --manifest-path <main checkout>/pixi.toml --as-is python <script>\n"
         "  - to change the environment: relock in a temporary checkout beside the main one (skill, Environments);\n"
         "    installing is the human's, in the MAIN checkout.",
         file=sys.stderr,

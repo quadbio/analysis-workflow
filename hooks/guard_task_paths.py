@@ -89,7 +89,7 @@ def main() -> int:
         hits.append(
             (
                 "a `pixi` call on the worktree's own workspace",
-                'jobs run on the main checkout\'s environment: pixi run --manifest-path "$MAIN/pixi.toml", '
+                'jobs run on the main checkout\'s environment: pixi run --manifest-path "$MAIN/pixi.toml" --as-is, '
                 "with MAIN passed in at submit",
             )
         )

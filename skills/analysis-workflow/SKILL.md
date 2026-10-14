@@ -65,7 +65,7 @@ into the human lane.
 - Another task's untracked outputs: `task_paths(<its _common.py>).outputs`. Read the main checkout by absolute
   path; never `cd` into it.
 - Batch-job scripts sit in `scripts/` beside the code they run. They get the main checkout as `$MAIN` from the
-  submit command, never hardcoded, run `pixi run --manifest-path "$MAIN/pixi.toml"`, and log to `PATHS.logs`. How
+  submit command, never hardcoded, run `pixi run --manifest-path "$MAIN/pixi.toml" --as-is`, and log to `PATHS.logs`. How
   to submit them is the cluster's skill.
 - Large single-cell computations (neighbors, UMAP, clustering on ≳100k cells) use rapids-singlecell over scanpy, in
   a GPU job.
@@ -102,9 +102,9 @@ into the human lane.
 ## Environments
 
 - The root `pixi.toml` is shared; reusability decides what goes in. A benchmark's candidates go task-local.
-- A worktree runs on the main checkout's environment: `pixi run --manifest-path <main>/pixi.toml …`. Only the human
-  installs it, in the main checkout, one session at a time. `pixi install` rewrites the path-dependency entries in
-  `pixi.lock`; that local diff is noise, so `git checkout pixi.lock` before pulling.
+- A worktree runs on the main checkout's environment: `pixi run --manifest-path <main>/pixi.toml --as-is …`.
+  Without `--as-is`, pixi relocks or installs into main whenever its manifest or lock is ahead of the environment.
+  Only the human installs it, in the main checkout, one session at a time.
 - A task that changes `pixi.toml` relocks without installing. Commit `pixi.toml`, then lock in a temporary checkout
   beside the main one, where the relative path dependencies resolve: `git worktree add --detach <main>/../<repo>-lock
   HEAD`, `pixi lock --manifest-path <that checkout>/pixi.toml`, copy its `pixi.lock` into the task's worktree and
