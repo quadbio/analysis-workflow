@@ -59,16 +59,15 @@ def after(tool_input: dict, path: Path) -> str | None:
     return text.replace(old, new) if tool_input.get("replace_all") else text.replace(old, new, 1)
 
 
-def task_dir(path: Path) -> Path | None:
-    """The task directory ``path`` is in: the outermost directory named `<name>_vN` under its `analysis/`.
+def task_dir(path: Path, analysis: Path) -> Path | None:
+    """The task directory ``path`` is in: the outermost directory named `<name>_vN` under the checkout's `analysis/`.
 
     Outermost, so a versioned folder inside a task (`outputs/model_v1/`) is not taken for one.
     """
-    parents = list(path.parents)
-    for i, parent in enumerate(parents):
-        if parent.name == "analysis":
-            return next((p for p in reversed(parents[:i]) if TASK_DIR.match(p.name)), None)
-    return None
+    if not path.is_relative_to(analysis):
+        return None
+    below = path.relative_to(analysis).parts[:-1]
+    return next((analysis.joinpath(*below[: i + 1]) for i, p in enumerate(below) if TASK_DIR.match(p)), None)
 
 
 def problem(path: Path, task: Path, tool_input: dict) -> str | None:
@@ -91,10 +90,11 @@ def main() -> int:
     """Read the hook payload from stdin; return the exit code."""
     tool_input = json.load(sys.stdin).get("tool_input", {})
     path = Path(tool_input.get("file_path") or tool_input.get("notebook_path") or "")
-    if "analysis" not in path.parts or (task := task_dir(path)) is None:
+    if "analysis" not in path.parts:
         return 0
-    found = checkouts(task)
-    if not found or not adopted(found[0]):
+    path = path.resolve()
+    found = checkouts(path.parent)
+    if not found or not adopted(found[0]) or (task := task_dir(path, found[0].resolve() / "analysis")) is None:
         return 0
     if (why := problem(path, task, tool_input)) is None:
         return 0

@@ -216,6 +216,11 @@ def test_layout_ignores_files_outside_task_directories(repo, rel):
     assert run("guard_task_layout.py", write(worktree / rel, "# anything\n## Free form\n")) == 0
 
 
+def test_layout_ignores_an_analysis_dir_above_the_checkout(repo_under_analysis):
+    _, worktree = repo_under_analysis
+    assert run("guard_task_layout.py", write(worktree / "src" / "package_v1" / "config.json", "{}")) == 0
+
+
 def test_guards_ignore_repos_that_have_not_adopted_the_plugin(unadopted_repo):
     _, worktree = unadopted_repo
     (worktree / "pixi.toml").write_text('[pypi-dependencies]\nother = { path = ".", editable = true }\n')
