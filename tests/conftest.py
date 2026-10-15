@@ -8,6 +8,12 @@ def git(*args, cwd):
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
 
 
+@pytest.fixture(name="git")
+def git_fixture():
+    """``git(*args, cwd=...)`` for a test."""
+    return git
+
+
 @pytest.fixture
 def repo(tmp_path):
     """A main checkout with one committed task, and a worktree of it under .claude/worktrees/."""

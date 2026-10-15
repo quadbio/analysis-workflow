@@ -69,6 +69,8 @@ def main() -> int:
         print(f"\nEvery Bash command runs on `{variables['CONDA_PREFIX']}`: run `python …` directly.")
     else:
         print(f"\nNo environment is active: run `pixi run --manifest-path {main_checkout}/pixi.toml --as-is …`.")
+    if deliverables := os.environ.get("CLAUDE_PLUGIN_OPTION_DELIVERABLES", "").strip():
+        print(f"Default deliverables, from the plugin settings: {deliverables}.")
     return 0
 
 
