@@ -1,5 +1,5 @@
 {
-  "description": "analysis-workflow, in repos that enable it: always-on core rules, plus guards against worktree-unsafe output paths, pixi installs and task READMEs off the template.",
+  "description": "analysis-workflow, in repos that enable it: always-on core rules, plus guards against worktree-unsafe output paths, pixi installs and task directories off the template.",
   "hooks": {
     "SessionStart": [
       {
@@ -35,6 +35,17 @@
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_task_layout.py\"",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_task_layout.py\"",
+            "timeout": 15
           }
         ]
       }

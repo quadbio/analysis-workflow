@@ -216,6 +216,39 @@ def test_layout_ignores_files_outside_task_directories(repo, rel):
     assert run("guard_task_layout.py", write(worktree / rel, "# anything\n## Free form\n")) == 0
 
 
+@pytest.mark.parametrize(("rel", "code"), [("scripts/01_step.py", 0), ("HANDOFF.md", 2)])
+def test_layout_passes_over_a_topic_named_like_a_task(repo, rel, code):
+    _, worktree = repo
+    assert run("guard_task_layout.py", write(worktree / "analysis" / "cohort_v1" / "demo_v1" / rel, "x")) == code
+
+
+def stop(cwd: Path, active: bool = False) -> int:
+    return run("guard_task_layout.py", {"hook_event_name": "Stop", "cwd": str(cwd), "stop_hook_active": active})
+
+
+def test_layout_at_stop_checks_files_made_from_the_shell(repo):
+    _, worktree = repo
+    task = worktree / "analysis" / "topic" / "demo_v1"
+    assert stop(worktree) == 0  # nothing changed
+    (task / "README.md").write_text(readme())
+    (task / "scripts").mkdir()
+    (task / "scripts" / "01_step.py").write_text("x = 1")
+    assert stop(worktree) == 0
+    (task / "slurm").mkdir()
+    (task / "slurm" / "run.sh").write_text("x")
+    assert stop(worktree) == 2
+    assert stop(worktree, active=True) == 0  # the agent tried once; let it stop
+
+
+def test_layout_at_stop_checks_the_readme_of_a_changed_task(repo):
+    _, worktree = repo
+    (worktree / "analysis" / "topic" / "demo_v1" / "results").mkdir()
+    (worktree / "analysis" / "topic" / "demo_v1" / "results" / "a.csv").write_text("a")
+    assert stop(worktree) == 2  # the fixture's README is a bare title
+    (worktree / "analysis" / "topic" / "demo_v1" / "README.md").write_text(readme())
+    assert stop(worktree) == 0
+
+
 def test_layout_ignores_an_analysis_dir_above_the_checkout(repo_under_analysis):
     _, worktree = repo_under_analysis
     assert run("guard_task_layout.py", write(worktree / "src" / "package_v1" / "config.json", "{}")) == 0
