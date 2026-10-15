@@ -169,7 +169,13 @@ def readme(title: str = "demo_v1") -> str:
 def test_layout_allows_the_template_readme_and_its_files(repo):
     _, worktree = repo
     task = worktree / "analysis" / "topic" / "demo_v1"
-    for rel, content in [("README.md", readme()), ("scripts/01_step.py", "x = 1"), ("results/a.csv", "a")]:
+    for rel, content in [
+        ("README.md", readme()),
+        ("scripts/01_step.py", "x = 1"),
+        ("results/a.csv", "a"),
+        ("pixi.toml", "[workspace]\n"),  # a task-local environment
+        ("outputs/model_v1/config.json", "{}"),  # a versioned folder inside the task
+    ]:
         assert run("guard_task_layout.py", write(task / rel, content)) == 0, rel
 
 

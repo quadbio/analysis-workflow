@@ -35,12 +35,12 @@ recorded here with its final path. -->
 
 ## Running
 
-<!-- From the task directory, on the main checkout's environment. Batch jobs get `MAIN=<main checkout>` at submit
-and log to `PATHS.logs`. -->
+<!-- From `scripts/`, on the main checkout's environment. Batch jobs get `MAIN=<main checkout>` at submit and log
+to `PATHS.logs`. -->
 
 ```bash
 PY="pixi run --manifest-path <main checkout>/pixi.toml --as-is python"
-$PY scripts/<step>.py
+$PY 01_<step>.py
 LOGS=$($PY -c "from _common import PATHS; print(PATHS.ensure().logs)")
 ```
 

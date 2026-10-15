@@ -24,6 +24,8 @@ TEMPLATE = PLUGIN / "skills" / "analysis-workflow" / "assets" / "task_template"
 TASK_DIR = re.compile(r".+_v\d+$")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 FENCE = re.compile(r"^\s*(```|~~~)")
+#: A task-local environment, for a benchmark's candidates (the skill's Environments).
+TASK_ENVIRONMENT = {"pixi.toml", "pixi.lock"}
 
 
 def output_dirs() -> set[str]:
@@ -58,19 +60,21 @@ def after(tool_input: dict, path: Path) -> str | None:
 
 
 def task_dir(path: Path) -> Path | None:
-    """The task directory ``path`` is in: its nearest ancestor under `analysis/` named `<name>_vN`."""
-    for parent in path.parents:
+    """The task directory ``path`` is in: the outermost directory named `<name>_vN` under its `analysis/`.
+
+    Outermost, so a versioned folder inside a task (`outputs/model_v1/`) is not taken for one.
+    """
+    parents = list(path.parents)
+    for i, parent in enumerate(parents):
         if parent.name == "analysis":
-            return None
-        if TASK_DIR.match(parent.name):
-            return parent
+            return next((p for p in reversed(parents[:i]) if TASK_DIR.match(p.name)), None)
     return None
 
 
 def problem(path: Path, task: Path, tool_input: dict) -> str | None:
     """What is off-layout about this call, or None."""
     top = path.relative_to(task).parts[0]
-    allowed = {p.name for p in TEMPLATE.iterdir()} | output_dirs()
+    allowed = {p.name for p in TEMPLATE.iterdir()} | output_dirs() | TASK_ENVIRONMENT
     if top not in allowed:
         return f"`{top}` is not part of a task directory, whose top holds only {', '.join(sorted(allowed))}."
     if path != task / "README.md" or (text := after(tool_input, path)) is None:
