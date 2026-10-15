@@ -85,10 +85,10 @@ the deliverables; they and the PR bodies link to the README instead of restating
 3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off. Ask which subdirectory;
    record the path.
 4. `analysis-workflow check layout`, then push.
-5. Open the PR and add it to the README. Its body links the task README and says what this PR adds or changes, by
-   deliverable; what needs the human: a write-back or promotion to sign off, decisions the agent took alone, open
-   questions; and the PRs and issues it depends on. Method, parameters and numbers stay in the README and the
-   deliverables.
+5. Open the PR, then add it to the README and push again. Its body links the task README and says what this PR
+   adds or changes, by deliverable; what needs the human: a write-back or promotion to sign off, decisions the agent
+   took alone, open questions; and the PRs and issues it depends on. Method, parameters and numbers stay in the
+   README and the deliverables.
 6. The worktree is removed only once no batch job submitted from it is still queued or running.
 
 ## Data
