@@ -7,8 +7,8 @@ environment. Its README's title is the directory's name, and its other headings 
 them and in order. Both are read from their sources, the template and `paths.py`, so a change there is a change here.
 
 PreToolUse (Edit|Write|NotebookEdit): checks what this call would leave; exit 2 blocks it.
-Stop: checks the task directories with uncommitted changes, which also catches files made from the shell; exit 2
-keeps the agent working, once (`stop_hook_active`).
+Stop: checks the task directories this branch touches, committed or not, which also catches files made from the
+shell; exit 2 keeps the agent working, once (`stop_hook_active`).
 Stderr goes to the agent. Standard library only: it runs on whatever `python3` is on PATH.
 """
 
@@ -124,34 +124,32 @@ def check_write(tool_input: dict) -> list[str]:
     return [f"in {task.name}/, {why}"] if why else []
 
 
+def git(top: Path, *args: str) -> str:
+    """A git command's output in the checkout ``top``; empty if it fails."""
+    return subprocess.run(["git", *args], cwd=top, capture_output=True, text=True, timeout=10).stdout
+
+
+def branch_changes(top: Path) -> list[Path]:
+    """Paths under `analysis/` this branch changed, committed or not, deleted ones included, and untracked files."""
+    base = next((b for ref in ("origin/HEAD", "origin/main", "main") if (b := git(top, "merge-base", "HEAD", ref))), "")
+    names = git(top, "diff", "--name-only", "--no-renames", "-z", base.strip() or "HEAD", "--", "analysis").split("\0")
+    names += git(top, "ls-files", "--others", "--exclude-standard", "-z", "--", "analysis").split("\0")
+    return [top / name for name in dict.fromkeys(names) if name]
+
+
 def check_changes(cwd: Path) -> list[str]:
-    """The problems in the task directories with uncommitted changes in the checkout at ``cwd``."""
+    """The problems in the task directories this branch touches, in the checkout at ``cwd``."""
     found = checkouts(cwd)
     if not found or not adopted(found[0]):
         return []
     top = found[0].resolve()
-    status = subprocess.run(
-        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", "analysis"],
-        cwd=top,
-        capture_output=True,
-        text=True,
-        timeout=10,
-    ).stdout.split("\0")
-    paths, skip = [], False
-    for entry in status:
-        if skip or len(entry) < 4:
-            skip = False
-            continue
-        skip = entry[0] in "RC"  # a rename's or copy's original path follows
-        if "D" not in entry[:2]:
-            paths.append(top / entry[3:])
     entries, problems, tasks = allowed(), [], {}
-    for path in paths:
+    for path in branch_changes(top):
         if task := task_dir(path, top / "analysis", entries):
             tasks[task] = None
-            if why := problem(path, task, entries, None):
+            if path.exists() and (why := problem(path, task, entries, None)):
                 problems.append(f"in {task.name}/, {why}")
-    for task in tasks:
+    for task in (t for t in tasks if t.is_dir()):  # a task renamed away is gone, not broken
         readme = task / "README.md"
         why = problem(readme, task, entries, readme.read_text()) if readme.exists() else "no README.md."
         if why:

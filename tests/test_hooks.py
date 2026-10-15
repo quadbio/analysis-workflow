@@ -1,4 +1,4 @@
-"""The PreToolUse hooks: a JSON payload on stdin in, an exit code out (2 = blocked)."""
+"""The hooks: a JSON payload on stdin in, an exit code out (2 = blocked)."""
 
 import json
 import os
@@ -246,6 +246,33 @@ def test_layout_at_stop_checks_the_readme_of_a_changed_task(repo):
     (worktree / "analysis" / "topic" / "demo_v1" / "results" / "a.csv").write_text("a")
     assert stop(worktree) == 2  # the fixture's README is a bare title
     (worktree / "analysis" / "topic" / "demo_v1" / "README.md").write_text(readme())
+    assert stop(worktree) == 0
+
+
+def test_layout_at_stop_checks_what_the_branch_committed(repo, git):
+    _, worktree = repo
+    task = worktree / "analysis" / "topic" / "demo_v1"
+    (task / "README.md").write_text(readme())
+    (task / "HANDOFF.md").write_text("x")
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "readme", cwd=worktree)
+    git("add", ".", cwd=worktree)
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "handoff", cwd=worktree)
+    assert stop(worktree) == 2
+    git("rm", "-q", "analysis/topic/demo_v1/HANDOFF.md", cwd=worktree)
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "drop", cwd=worktree)
+    assert stop(worktree) == 0
+
+
+def test_layout_at_stop_notices_a_deleted_readme(repo):
+    _, worktree = repo
+    (worktree / "analysis" / "topic" / "demo_v1" / "README.md").unlink()
+    assert stop(worktree) == 2
+
+
+def test_layout_at_stop_allows_a_renamed_task(repo, git):
+    _, worktree = repo
+    git("mv", "analysis/topic/demo_v1", "analysis/topic/renamed_v1", cwd=worktree)
+    (worktree / "analysis" / "topic" / "renamed_v1" / "README.md").write_text(readme("renamed_v1"))
     assert stop(worktree) == 0
 
 
