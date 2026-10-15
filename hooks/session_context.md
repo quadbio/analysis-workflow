@@ -2,7 +2,7 @@ This repository follows the analysis-workflow conventions. Load the `analysis-wo
 analysis code, outputs or data. Always:
 
 1. One task = one session = one git worktree = one directory `analysis/<topic>/.../<name>_vN/`. A new task
-   directory needs a new session, which the human starts with `claude --worktree <name>` in the main checkout.
+   directory needs a new session, started with `claude --worktree <name>` in the main checkout.
    Analysis only moves forward: earlier task directories are never edited, fixed or updated.
 2. Every output path comes from `task_paths(__file__)` (package `analysis_workflow`); never a bare relative path.
 3. Ask the human which working object (and which label keys) is current, never inferring it from a script or the
