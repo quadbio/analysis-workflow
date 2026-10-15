@@ -42,7 +42,7 @@ Humans work in notebooks, flat under `analysis/<topic>/`, writing to `data/<data
 
 **Start**
 1. A task is one branch, merged through one or more PRs; a later answer to the same question is the next version,
-   in a new session.
+   in a new session. Only task directories end in `_vN`; a topic never does.
 2. Copy `assets/task_template/` into the task directory.
 3. Settle what session rule 3 asks, the working object with its label keys and the deliverables, and record both in
    the README. Deliverables are any of a report, a figure, an HTML page, just results in `outputs/` and a
