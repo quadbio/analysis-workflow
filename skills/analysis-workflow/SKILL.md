@@ -18,14 +18,14 @@ Steps: `references/repos.md`.
 
 Elsewhere:
 - the repo's `AGENTS.md`: its datasets, where its working objects live, its environments. It wins over examples here;
-- compute and job submission: the environment's own docs or skill;
-- **every scientific plot: the `sci-figures` skill**; cell-type annotation: `cell-type-annotation`;
+- figures, analysis methods, and the compute environment with its job submission: their own docs or skills.
+  Nothing here covers them, and these conventions hold on any machine;
 - why the storage rules are what they are: `references/storage.md`.
 
 ## Where code goes
 
-- Science code that several tasks need goes to a code repo, plotting code included. Figure code is copied only
-  between versions of one task. The analysis repo's own package holds `FilePaths`, dataset versioning and a CLI.
+- Science code that several tasks need goes to a code repo; a new version of a task copies what it reuses from the
+  one it follows. The analysis repo's own package holds `FilePaths`, dataset versioning and a CLI.
 - A task that changes a code repo does so in a worktree of that repo, added from the same session:
   `git -C <code repo> worktree add .claude/worktrees/<task> -b <branch>`.
 - Look before writing: existing packages (scverse, then its ecosystem), sibling code repos, earlier task directories.
@@ -36,26 +36,21 @@ Elsewhere:
 ## Two lanes
 
 Humans work in notebooks, flat under `analysis/<topic>/`, writing to `data/<dataset>/results/` and
-`figures/<topic>/`; notebook outputs are committed. Agents work in task directories, with scripts, and never write
-into the human lane.
+`figures/<topic>/`; notebook outputs are committed. Agents work in task directories, with scripts.
 
 ## Tasks
 
 **Start**
-1. One task = one session = one git worktree = one branch = one directory `analysis/<topic>/.../<name>_vN/`, merged
-   through one or more PRs. A new task directory needs a new session, which the human starts with
-   `claude --worktree <name>` in the main checkout; a later answer to the same question is `_v2`.
-2. Copy `assets/task_template/`. A later version names the one it follows in its README; earlier task directories
-   are never edited.
-3. Ask which working object and which label keys are current, and record them under Inputs. Never infer them from a
-   script or the newest file name.
-4. Ask what the task should deliver: a report, a figure, an HTML page, just results in `outputs/`, a write-back, or
-   several of these. Record the answer under Deliverables, and any later change to it.
-5. Rename freely until the first write-back or the merge; then the name is frozen, because keys carry it.
+1. A task is one branch, merged through one or more PRs; a later answer to the same question is the next version,
+   in a new session.
+2. Copy `assets/task_template/` into the task directory.
+3. Settle what session rule 3 asks, the working object with its label keys and the deliverables, and record both in
+   the README. Deliverables are any of a report, a figure, an HTML page, just results in `outputs/` and a
+   write-back; start from the default the session start lists, if any, which the human may change for this task.
+4. Rename freely until the first write-back or the merge; then the name is frozen, because keys carry it.
 
 **Run**
-- Every output path comes from `PATHS = task_paths(__file__)` in `_common.py`; `PATHS.ensure()` in the writer.
-  A bare relative path written from a worktree dies with the worktree.
+- `PATHS = task_paths(__file__)` lives in `scripts/_common.py`; call `PATHS.ensure()` in the writer.
 
   | dir | tracked | lives in | holds |
   | --- | --- | --- | --- |
@@ -67,28 +62,26 @@ into the human lane.
 
 - Another task's untracked outputs: `task_paths(<its _common.py>).outputs`. Read the main checkout by absolute
   path; never `cd` into it.
-- Batch-job scripts sit in `scripts/` beside the code they run. They get the main checkout as `$MAIN` from the
-  submit command, never hardcoded, run `pixi run --manifest-path "$MAIN/pixi.toml" --as-is`, and log to `PATHS.logs`. How
-  to submit them is the cluster's skill.
-- Large single-cell computations (neighbors, UMAP, clustering on ≳100k cells) use rapids-singlecell over scanpy, in
-  a GPU job.
+- Scripts go in `scripts/`: the steps as `NN_<step>.py`, numbered in run order, and batch-job scripts beside the
+  code they run. A batch job gets the main checkout as `$MAIN` from the submit command, never hardcoded, and logs to
+  `PATHS.logs`; how to submit it is the compute environment's concern.
 - A deliverable that states a number may carry `scripts/verify.py` re-deriving it. A code package's invariants
   belong in that package's tests.
 
-**Record.** Each fact has one home. The README is the task's record: its deliverables, inputs, decisions (who made
-each, and why), write-back, how to run it, and every PR and issue the session opened, in any repo. Findings live in
-the deliverables; they and the PR bodies link to the README instead of restating it.
+**Record.** The task README, in the task template's layout, is the overview, kept current. The deliverables hold the
+findings; the README links to them rather than restating them. The details of each PR go in its body, laid out by
+the repo's `.github/pull_request_template.md`; the README gives each PR, and each issue the session opened in any
+repo, a short summary.
 
 **Finish**
-1. The agreed deliverables, and the README brought up to date.
+1. The agreed deliverables, and the README brought up to date, its jobs counted with the compute environment's
+   tools.
 2. Write back: dry run, sign-off on that diff, then `yes=True`.
 3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off. Ask which subdirectory;
    record the path.
 4. `analysis-workflow check layout`, then push.
-5. Open the PR, then add it to the README and push again. Its body links the task README and says what this PR
-   adds or changes, by deliverable; what needs the human: a write-back or promotion to sign off, decisions the agent
-   took alone, open questions; and the PRs and issues it depends on. Method, parameters and numbers stay in the
-   README and the deliverables.
+5. Open the PR, its body from the PR template; then add it with a short summary to the README and push again. The
+   body is edited until the merge, never after.
 6. The worktree is removed only once no batch job submitted from it is still queued or running.
 
 ## Data
@@ -113,11 +106,10 @@ the deliverables; they and the PR bodies link to the README instead of restating
 ## Environments
 
 - The root `pixi.toml` is shared; reusability decides what goes in. A benchmark's candidates go task-local.
-- A worktree runs on the main checkout's environment; only the human installs it, in the main checkout, one
-  session at a time. The session-start hook activates it for every Bash command, subagents' included: run
-  `python …` directly. Batch jobs, and anything run outside a session, use
-  `pixi run --manifest-path <main>/pixi.toml --as-is …`; without `--as-is`, pixi relocks or installs into main
-  whenever its manifest or lock is ahead of the environment.
+- The human installs the main checkout's environment one session at a time. The session-start hook activates it
+  for every Bash command, subagents' included: run `python …` directly. Anything run outside a session uses
+  `pixi run --manifest-path <main>/pixi.toml --as-is …`, as batch jobs do; without `--as-is`, pixi relocks or
+  installs into main whenever its manifest or lock is ahead of the environment.
 - A task that changes `pixi.toml` locks, installs and tests it in a temporary checkout beside the main one, where
   the relative path dependencies resolve; main's environment stays untouched. Commit `pixi.toml`, then
   `git worktree add --detach <main>-lock HEAD` (`<main>` is the main checkout's path), and pass
@@ -136,5 +128,5 @@ the deliverables; they and the PR bodies link to the README instead of restating
 
 ## Review
 
-Each repo keeps a `REVIEW_GUIDE.md` for reviewers that cannot load this plugin; its generic half is
-[the template's](https://github.com/quadbio/analysis_template/blob/main/%7B%7Bcookiecutter.project_name%7D%7D/REVIEW_GUIDE.md).
+A repo's PR template and the generic half of its `REVIEW_GUIDE.md`, for reviewers that cannot load this plugin,
+come from [the analysis template](https://github.com/quadbio/analysis_template/tree/main/%7B%7Bcookiecutter.project_name%7D%7D).

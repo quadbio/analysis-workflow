@@ -157,10 +157,64 @@ def test_pixi_allows_the_main_checkout(repo):
     assert run("guard_worktree_pixi.py", bash("pixi install", main)) == 0
 
 
+TEMPLATE_README = (
+    Path(__file__).parents[1] / "skills" / "analysis-workflow" / "assets" / "task_template" / "README.md"
+).read_text()
+
+
+def readme(title: str = "demo_v1") -> str:
+    return TEMPLATE_README.replace(TEMPLATE_README.splitlines()[0], f"# {title}", 1)
+
+
+def test_layout_allows_the_template_readme_and_its_files(repo):
+    _, worktree = repo
+    task = worktree / "analysis" / "topic" / "demo_v1"
+    for rel, content in [("README.md", readme()), ("scripts/01_step.py", "x = 1"), ("results/a.csv", "a")]:
+        assert run("guard_task_layout.py", write(task / rel, content)) == 0, rel
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        readme("other_v1"),  # title is not the directory's name
+        readme().replace("## Jobs", "## Notes"),  # a section renamed
+        readme().replace("## Jobs\n", ""),  # a section dropped
+        readme() + "\n## Notes\n",  # a section added
+        readme().replace("## Inputs\n", "## Inputs\n\n### Working object\n"),  # a subheading
+    ],
+)
+def test_layout_blocks_a_readme_off_the_template(repo, content):
+    _, worktree = repo
+    assert run("guard_task_layout.py", write(worktree / "analysis" / "topic" / "demo_v1" / "README.md", content)) == 2
+
+
+def test_layout_checks_the_readme_an_edit_would_leave(repo):
+    _, worktree = repo
+    path = worktree / "analysis" / "topic" / "demo_v1" / "README.md"
+    path.write_text(readme())
+    edit = {"tool_name": "Edit", "tool_input": {"file_path": str(path), "old_string": "## Jobs", "new_string": ""}}
+    assert run("guard_task_layout.py", edit) == 2
+    edit["tool_input"] |= {"old_string": "None.", "new_string": "None.", "replace_all": True}
+    assert run("guard_task_layout.py", edit) == 0
+
+
+@pytest.mark.parametrize("rel", ["HANDOFF.md", "plan.md", "slurm/run.sh", "_common.py"])
+def test_layout_blocks_files_outside_the_task_layout(repo, rel):
+    _, worktree = repo
+    assert run("guard_task_layout.py", write(worktree / "analysis" / "topic" / "demo_v1" / rel, "x")) == 2
+
+
+@pytest.mark.parametrize("rel", ["analysis/topic/README.md", "analysis/topic/notes.ipynb", "analysis/v8/README.md"])
+def test_layout_ignores_files_outside_task_directories(repo, rel):
+    _, worktree = repo
+    assert run("guard_task_layout.py", write(worktree / rel, "# anything\n## Free form\n")) == 0
+
+
 def test_guards_ignore_repos_that_have_not_adopted_the_plugin(unadopted_repo):
     _, worktree = unadopted_repo
     (worktree / "pixi.toml").write_text('[pypi-dependencies]\nother = { path = ".", editable = true }\n')
     assert run("guard_task_paths.py", write(worktree / "analysis" / "t_v1" / "run.py", 'OUT = "/tmp/run1"')) == 0
+    assert run("guard_task_layout.py", write(worktree / "analysis" / "t_v1" / "HANDOFF.md", "x")) == 0
     assert run("guard_worktree_pixi.py", bash("pixi install", worktree)) == 0
 
 
@@ -183,6 +237,13 @@ def test_session_start_prints_the_rules_only_in_an_adopted_repo(repo, unadopted_
     assert session_start(main).startswith(rules)
     assert session_start(worktree / "analysis").startswith(rules)
     assert session_start(unadopted_repo[0]) == session_start(tmp_path) == ""
+
+
+def test_session_start_lists_the_default_deliverables_when_set(repo):
+    main, _ = repo
+    line = "Default deliverables, from the plugin settings: a figure."
+    assert line in session_start(main, CLAUDE_PLUGIN_OPTION_DELIVERABLES="a figure")
+    assert "Default deliverables" not in session_start(main, CLAUDE_PLUGIN_OPTION_DELIVERABLES="")
 
 
 @pytest.fixture

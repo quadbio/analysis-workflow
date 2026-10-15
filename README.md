@@ -8,7 +8,7 @@ shared AnnData zarr *working object* per dataset that grows by additive write-ba
 | Part | What it does |
 | --- | --- |
 | `skills/analysis-workflow/` | The conventions: repo model, human and agent lanes, task lifecycle, `data/` layout, working objects, environments. Loaded on demand. |
-| `hooks/` | Always-on core rules and the main checkout's environment at session start; blocks worktree-unsafe output paths and `pixi install` in a worktree. |
+| `hooks/` | Always-on core rules and the main checkout's environment at session start; blocks worktree-unsafe output paths, `pixi install` in a worktree, and task directories off the template. |
 | `src/analysis_workflow/` | `task_paths`, `main_checkout`, `commit_adata`, `keys_on_disk`, `analyze_anndata_size`, and `analysis-workflow check layout`. |
 
 It assumes analysis repos made from [analysis_template](https://github.com/quadbio/analysis_template)
@@ -25,11 +25,12 @@ claude --worktree <task>
 ```
 
 1. The agent works on that worktree's branch, in a new task directory `analysis/<topic>/<task>_vN/`; a later
-   answer to the same question gets the next version, in a new session.
-2. It asks you which working object is current and what the task should deliver (a report, a figure, a write-back, …),
-   then works in scripts; outputs go to the task directory.
+   answer to the same question gets the next version, in a new session. Earlier task directories are never edited.
+2. It asks you which working object is current and agrees what the task delivers (by default your `deliverables`
+   setting), then works in scripts; outputs go to the task directory.
 3. Results reach a shared working object only after you sign off the dry run.
-4. It opens a PR. Once it is merged and its batch jobs have finished, leave with `/exit` and remove the worktree.
+4. It opens a PR whose body holds the details; the task README summarizes each PR. Once it is merged and its batch
+   jobs have finished, leave with `/exit` and remove the worktree.
 
 Notebooks stay with you, in the main checkout. A task that changes the environment locks, installs and tests
 it in a temporary checkout beside the main one; after its merge you pull and run `pixi install` there. With no
@@ -39,26 +40,16 @@ analysis repo yet, ask Claude to start an analysis project: the skill sets one u
 
 **The plugin**, once per machine, from the [quadbio marketplace](https://github.com/quadbio/claude-plugins). The
 skill is then available everywhere; the hooks and session-start rules act only in repos that enable the plugin in
-their committed `.claude/settings.json`, as [analysis_template](https://github.com/quadbio/analysis_template) does:
+their committed `.claude/settings.json`. Every repo made from
+[analysis_template](https://github.com/quadbio/analysis_template) does, and depends on the package in its
+`pixi.toml` (its lock pins the commit; `pixi update` moves it). To adopt an existing repo, ask Claude to adopt the
+conventions.
 
-```json
-{
-  "extraKnownMarketplaces": {
-    "quadbio": { "source": { "source": "github", "repo": "quadbio/claude-plugins" } }
-  },
-  "enabledPlugins": { "analysis-workflow@quadbio": true },
-  "permissions": { "additionalDirectories": ["../<repo>-lock"] }
-}
-```
+**Settings**, saved with `/plugin configure analysis-workflow@quadbio`:
 
-`<repo>` is the main checkout's directory name: a task changing the environment locks it in `../<repo>-lock`.
-
-**The package**, in the analysis repo's `pixi.toml` (its lock pins the commit; `pixi update` moves it):
-
-```toml
-[pypi-dependencies]
-analysis-workflow = { git = "https://github.com/quadbio/analysis-workflow" }
-```
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `deliverables` | `a figure` | What a task delivers unless you choose otherwise at its start; recorded in the task README. Blank: the agent asks. |
 
 ## Develop
 
