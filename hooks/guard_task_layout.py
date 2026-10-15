@@ -11,7 +11,9 @@ PreToolUse hook (Edit|Write|NotebookEdit): exit 2 blocks the call and shows stde
 Standard library only: it runs on whatever `python3` is on PATH.
 """
 
-import importlib.util
+from __future__ import annotations
+
+import ast
 import json
 import re
 import sys
@@ -29,11 +31,20 @@ TASK_ENVIRONMENT = {"pixi.toml", "pixi.lock"}
 
 
 def output_dirs() -> set[str]:
-    """The task output directories, from the package's `paths.py` (loaded alone: the package may not be installed)."""
-    spec = importlib.util.spec_from_file_location("_aw_paths", PLUGIN / "src" / "analysis_workflow" / "paths.py")
-    paths = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(paths)
-    return {*paths.TRACKED_TASK_DIRS, *paths.UNTRACKED_TASK_DIRS}
+    """The task output directories, read from the package's `paths.py` without running it.
+
+    The package targets a newer Python than this hook, and may not be installed.
+    """
+    names = ("TRACKED_TASK_DIRS", "UNTRACKED_TASK_DIRS")
+    tree = ast.parse((PLUGIN / "src" / "analysis_workflow" / "paths.py").read_text())
+    found = {
+        target.id: ast.literal_eval(node.value)
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        for target in node.targets
+        if isinstance(target, ast.Name) and target.id in names
+    }
+    return {d for name in names for d in found[name]}
 
 
 def headings(text: str) -> list[tuple[int, str]]:

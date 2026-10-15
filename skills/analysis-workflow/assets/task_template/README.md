@@ -48,7 +48,7 @@ LOGS=$($PY -c "from _common import PATHS; print(PATHS.ensure().logs)")
 
 <!-- Batch jobs this session launched, counted at the end. -->
 
-| queue | launched | succeeded | failed | cancelled |
+| queue | launched | completed | failed | cancelled |
 | --- | --- | --- | --- | --- |
 | <queue> | <n> | <n> | <n> | <n> |
 
