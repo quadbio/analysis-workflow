@@ -26,7 +26,8 @@ claude --worktree <task>
 
 1. The agent works on that worktree's branch, in a new task directory `analysis/<topic>/<task>_vN/`; a later
    answer to the same question gets the next version, in a new session.
-2. It asks you which working object is current, then works in scripts; outputs go to the task directory.
+2. It asks you which working object is current and what the task should deliver (a report, a figure, a write-back, …),
+   then works in scripts; outputs go to the task directory.
 3. Results reach a shared working object only after you sign off the dry run.
 4. It opens a PR. Once it is merged and its batch jobs have finished, leave with `/exit` and remove the worktree.
 

@@ -2,7 +2,17 @@
 
 **Date:** <YYYY-MM-DD, when the task started>
 
-One or two sentences on what this task set out to answer.
+One or two sentences on what this task set out to answer. A later version names the one it follows and what it
+changes.
+
+## Deliverables
+
+Agreed with the human at the start; a later change is agreed and recorded here too.
+
+| deliverable | where |
+| --- | --- |
+| <e.g. a report> | `reports/<file>` |
+| <e.g. a write-back> | Write-back, below |
 
 ## Inputs
 
@@ -11,14 +21,14 @@ Name the actual files, not concepts: this is what makes the task re-runnable.
 - Working object: `data/<dataset>/processed/.../<object>.zarr`, and the label keys used
 - Other artifacts consumed: `analysis/<other_task>/outputs/<file>`, `data/<dataset>/processed/<file>`
 
-## Outputs
+## Decisions
 
-| what | where |
-| --- | --- |
-| evidence tables | `results/` (tracked) |
-| report | `reports/` (tracked) |
-| figures | `figures/` (gitignored, in the main checkout) |
-| data artifacts | `outputs/` (gitignored, in the main checkout) |
+Load-bearing parameters, what was tried and rejected, and the diagnostics that changed the method. A decision not
+yet taken has the value `open`.
+
+| decision | value | by | why |
+| --- | --- | --- | --- |
+| <what> | <the choice> | <human or agent, YYYY-MM-DD> | <the evidence, e.g. a file in `results/`> |
 
 ## Write-back
 
@@ -41,7 +51,8 @@ $PY scripts/<step>.py
 LOGS=$($PY -c "from _common import PATHS; print(PATHS.ensure().logs)")
 ```
 
-## Notes
+## PRs and issues
 
-Decisions a reader would otherwise have to reverse-engineer: what was tried and rejected, which parameters are
-load-bearing, what is still provisional.
+Every PR and issue this session opened, in any repo, added when opened.
+
+- `<owner/repo>#<n>`: one line on what it is

@@ -45,10 +45,13 @@ into the human lane.
 1. One task = one session = one git worktree = one branch = one directory `analysis/<topic>/.../<name>_vN/`, merged
    through one or more PRs. A new task directory needs a new session, which the human starts with
    `claude --worktree <name>` in the main checkout; a later answer to the same question is `_v2`.
-2. Copy `assets/task_template/`.
+2. Copy `assets/task_template/`. A later version names the one it follows in its README; earlier task directories
+   are never edited.
 3. Ask which working object and which label keys are current, and record them under Inputs. Never infer them from a
    script or the newest file name.
-4. Rename freely until the first write-back or the merge; then the name is frozen, because keys carry it.
+4. Ask what the task should deliver: a report, a figure, an HTML page, just results in `outputs/`, a write-back, or
+   several of these. Record the answer under Deliverables, and any later change to it.
+5. Rename freely until the first write-back or the merge; then the name is frozen, because keys carry it.
 
 **Run**
 - Every output path comes from `PATHS = task_paths(__file__)` in `_common.py`; `PATHS.ensure()` in the writer.
@@ -57,8 +60,8 @@ into the human lane.
   | dir | tracked | lives in | holds |
   | --- | --- | --- | --- |
   | `results/` | yes | this checkout | small evidence tables; past ~1 MB they belong in `outputs/` |
-  | `reports/` | yes | this checkout | the findings report |
-  | `figures/` | no | main checkout | `fig1_<name>.pdf` … in reading order |
+  | `reports/` | yes | this checkout | a report, if one is a deliverable |
+  | `figures/` | no | main checkout | figures |
   | `outputs/` | no | main checkout | data artifacts |
   | `logs/` | no | main checkout | batch-job logs, passed as an absolute path |
 
@@ -69,16 +72,24 @@ into the human lane.
   to submit them is the cluster's skill.
 - Large single-cell computations (neighbors, UMAP, clustering on ≳100k cells) use rapids-singlecell over scanpy, in
   a GPU job.
-- A figure that prints a number may carry `scripts/verify.py` re-deriving it. A code package's invariants belong in
-  that package's tests.
+- A deliverable that states a number may carry `scripts/verify.py` re-deriving it. A code package's invariants
+  belong in that package's tests.
+
+**Record.** Each fact has one home. The README is the task's record: its deliverables, inputs, decisions (who made
+each, and why), write-back, how to run it, and every PR and issue the session opened, in any repo. Findings live in
+the deliverables; they and the PR bodies link to the README instead of restating it.
 
 **Finish**
-1. Report, and the README: Inputs, Outputs, Write-back, Running, Notes.
+1. The agreed deliverables, and the README brought up to date.
 2. Write back: dry run, sign-off on that diff, then `yes=True`.
 3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off. Ask which subdirectory;
    record the path.
 4. `analysis-workflow check layout`, then push.
-5. The worktree is removed only once no batch job submitted from it is still queued or running.
+5. Open the PR and add it to the README. Its body links the task README and says what this PR adds or changes, by
+   deliverable; what needs the human: a write-back or promotion to sign off, decisions the agent took alone, open
+   questions; and the PRs and issues it depends on. Method, parameters and numbers stay in the README and the
+   deliverables.
+6. The worktree is removed only once no batch job submitted from it is still queued or running.
 
 ## Data
 
