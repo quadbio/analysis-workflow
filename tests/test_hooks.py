@@ -291,7 +291,9 @@ def test_guards_ignore_repos_that_have_not_adopted_the_plugin(unadopted_repo):
 
 def session_start(cwd: Path, **env: str) -> str:
     payload = json.dumps({"hook_event_name": "SessionStart", "cwd": str(cwd)})
-    environ = {k: v for k, v in os.environ.items() if k != "CLAUDE_ENV_FILE"} | env
+    environ = {
+        k: v for k, v in os.environ.items() if k != "CLAUDE_ENV_FILE" and not k.startswith("CLAUDE_PLUGIN_OPTION_")
+    } | env
     return subprocess.run(
         [sys.executable, HOOKS / "session_start.py"],
         input=payload,
@@ -310,10 +312,13 @@ def test_session_start_prints_the_rules_only_in_an_adopted_repo(repo, unadopted_
     assert session_start(unadopted_repo[0]) == session_start(tmp_path) == ""
 
 
-def test_session_start_lists_the_default_deliverables_when_set(repo):
+def test_session_start_lists_the_default_deliverables(repo):
     main, _ = repo
-    line = "Default deliverables, from the plugin settings: a figure."
-    assert line in session_start(main, CLAUDE_PLUGIN_OPTION_DELIVERABLES="a figure")
+    manifest = json.loads((HOOKS.parent / ".claude-plugin" / "plugin.json").read_text())
+    default = manifest["userConfig"]["deliverables"]["default"]
+    assert f"Default deliverables, from the plugin settings: {default}." in session_start(main)
+    line = "Default deliverables, from the plugin settings: a report."
+    assert line in session_start(main, CLAUDE_PLUGIN_OPTION_DELIVERABLES="a report")
     assert "Default deliverables" not in session_start(main, CLAUDE_PLUGIN_OPTION_DELIVERABLES="")
 
 
