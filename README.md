@@ -24,7 +24,7 @@ branches from `origin`'s default branch but runs on the main checkout's environm
 claude --worktree <task>
 ```
 
-1. The agent works on that worktree's branch, in a new task directory `analysis/<topic>/<task>_vN/`; a later
+1. The agent works on that worktree's branch, in a new task directory `analysis/<dataset>/<topic>/<task>_vN/`; a later
    answer to the same question gets the next version, in a new session. Earlier task directories are never edited.
 2. It asks you which working object is current and agrees what the task delivers (by default your `deliverables`
    setting), then works in scripts; outputs go to the task directory.

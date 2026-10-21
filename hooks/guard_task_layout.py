@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Keep every task directory in the template's layout.
 
-A task directory (`analysis/<topic>/.../<name>_vN/`) holds at its top only what the task template holds
+A task directory (`analysis/<dataset>/<topic>/.../<name>_vN/`) holds at its top only what the task template holds
 (`skills/analysis-workflow/assets/task_template/`), the output directories of `task_paths` and a task-local
 environment. Its README's title is the directory's name, and its other headings are the template README's, all of
 them and in order. Both are read from their sources, the template and `paths.py`, so a change there is a change here.
