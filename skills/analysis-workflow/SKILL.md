@@ -35,8 +35,11 @@ Elsewhere:
 
 ## Two lanes
 
-Humans work in notebooks, flat under `analysis/<topic>/`, writing to `data/<dataset>/results/` and
-`figures/<topic>/`; notebook outputs are committed. Agents work in task directories, with scripts.
+`analysis/` is split by dataset, then by broad topic: `analysis/<dataset>/<topic>/`, with the dataset level even when
+there is one dataset. Topics, such as `preprocessing/`, `annotation/` or `spatial/`, can mostly be worked on in any
+order. Humans work in notebooks, flat under a topic, writing to `data/<dataset>/results/` and
+`figures/<dataset>/<topic>/`; notebook outputs are committed. Agents work in task directories under a topic, with
+scripts.
 
 ## Tasks
 
