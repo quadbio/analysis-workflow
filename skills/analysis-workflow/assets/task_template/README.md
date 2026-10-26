@@ -22,8 +22,8 @@ here too. -->
 
 <!-- The actual files, not concepts: this is what makes the task re-runnable. -->
 
-- Working object: `data/<dataset>/processed/.../<object>.zarr`, and the label keys used
-- Other artifacts consumed: `analysis/<dataset>/<topic>/<other_task>/outputs/<file>`, `data/<dataset>/processed/<file>`
+- Working object: `data/<dataset>/processed/working/<object>.zarr`, and the label keys used
+- Other artifacts consumed: `analysis/<dataset>/<topic>/<other_task>/outputs/<file>`, `data/<dataset>/processed/<subdirectory>/<file>`
 
 ## Write-back
 

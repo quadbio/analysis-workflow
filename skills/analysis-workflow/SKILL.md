@@ -80,8 +80,8 @@ repo, a short summary.
 1. The agreed deliverables, and the README brought up to date, its jobs counted with the compute environment's
    tools.
 2. Write back: dry run, sign-off on that diff, then `yes=True`.
-3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off. Ask which subdirectory;
-   record the path.
+3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off: a working object into
+   `working/`, anything else into a subdirectory with a descriptive name. Ask which subdirectory; record the path.
 4. `analysis-workflow check layout`, then push.
 5. Open the PR, its body from the PR template; then add it with a short summary to the README and push again. The
    body is edited until the merge, never after.
@@ -93,10 +93,11 @@ repo, a short summary.
 | --- | --- | --- |
 | `raw/` | bytes as they arrived | nobody, after arrival |
 | `resources/` | curated inputs that are not data: gene lists, marker tables | a human, rarely |
-| `processed/` | objects code loads, the working objects among them | notebooks; tasks by promotion |
+| `processed/` | objects code loads: working objects in `working/`, others in descriptively named subdirectories | notebooks; tasks by promotion |
 | `results/` | a notebook's own outputs, prefixed with its stem | humans only |
 
-**Working objects** are AnnData zarr stores, `<name>_<YYYY-MM-DD>.zarr`, in which results accumulate.
+**Working objects** are AnnData zarr stores, `processed/working/<name>_<YYYY-MM-DD>.zarr`, in which results
+accumulate.
 - Read only what you need: `ad.io.read_elem(zarr.open_group(path)["obs"])`, or `ad.experimental.read_lazy`.
 - Write back only through `commit_adata`: additions only. Never write an in-memory object over a working object.
   Changing or removing a key means a new dated copy; recomputing an existing key is a silent no-op.
