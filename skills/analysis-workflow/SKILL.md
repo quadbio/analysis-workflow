@@ -1,10 +1,10 @@
 ---
 name: analysis-workflow
 description: >-
-  Conventions for analysis repos where humans (notebooks) and coding agents (scripts) work side by side. Use when
-  starting, running or finishing an analysis task; writing any output from an analysis script; reading or writing a
-  shared AnnData working object; adding a dataset path or constant; starting a new analysis project or adopting
-  these conventions in an existing repo; or reviewing an analysis pull request.
+  Conventions for analysis repos where humans and coding agents work side by side. Use when starting, running or
+  finishing an analysis task; writing any output from an analysis script; reading or writing a shared AnnData working
+  object; adding a dataset path or constant; starting a new analysis project or adopting these conventions in an
+  existing repo; or reviewing an analysis pull request.
 ---
 
 # Analysis workflow
@@ -17,6 +17,8 @@ human before anything else: create the analysis repo and, if wanted, its code re
 Steps: `references/repos.md`.
 
 Elsewhere:
+- the repo's `CONVENTIONS.md`, which humans follow too: task directories, their layout and versions, `data/`,
+  working objects and how to write to them. Read it first; this skill adds what only agents do;
 - the repo's `AGENTS.md`: its datasets, where its working objects live, its environments. It wins over examples here;
 - figures, analysis methods, and the compute environment with its job submission: their own docs or skills.
   Nothing here covers them, and these conventions hold on any machine;
@@ -33,41 +35,26 @@ Elsewhere:
   otherwise hardcode (a dataset root, a registered resource). Not task outputs, not the current working object
   (stated per session), not parameters (they stay in their script).
 
-## Two lanes
-
-`analysis/` is split by dataset, then by broad topic: `analysis/<dataset>/<topic>/`, with the dataset level even when
-there is one dataset. Topics, such as `preprocessing/`, `annotation/` or `spatial/`, can mostly be worked on in any
-order. Humans work in notebooks, flat under a topic, writing to `data/<dataset>/results/` and
-`figures/<dataset>/<topic>/`; notebook outputs are committed. Agents work in task directories under a topic, with
-scripts.
-
 ## Tasks
 
+Humans work in the main checkout, in `human_` task directories. An agent's task is one session, one worktree and one
+branch, merged through one or more PRs; a later answer to the same question is the next version, in a new session.
+
 **Start**
-1. A task is one branch, merged through one or more PRs; a later answer to the same question is the next version,
-   in a new session. Only task directories end in `_vN`; a topic never does.
-2. Copy `assets/task_template/` into the task directory.
-3. Settle what session rule 3 asks, the working object with its label keys and the deliverables, and record both in
+1. `analysis-workflow new analysis/<dataset>/<topic>/agent_<name>_vN --author "<your model>"`; if `vN` is not the
+   next version, it names the one that is.
+2. Settle what session rule 3 asks, the working object with its label keys and the deliverables, and record both in
    the README. Deliverables are any of a report, a figure, an HTML page, just results in `outputs/` and a
    write-back; start from the default the session start lists, if any, which the human may change for this task.
-4. Rename freely until the first write-back or the merge; then the name is frozen, because keys carry it.
 
 **Run**
-- `PATHS = task_paths(__file__)` lives in `scripts/_common.py`; call `PATHS.ensure()` in the writer.
-
-  | dir | tracked | lives in | holds |
-  | --- | --- | --- | --- |
-  | `results/` | yes | this checkout | small evidence tables; past ~1 MB they belong in `outputs/` |
-  | `reports/` | yes | this checkout | a report, if one is a deliverable |
-  | `figures/` | no | main checkout | figures |
-  | `outputs/` | no | main checkout | data artifacts |
-  | `logs/` | no | main checkout | batch-job logs, passed as an absolute path |
-
+- `PATHS = task_paths(__file__)` lives in `scripts/_common.py`; call `PATHS.ensure()` in the writer. The tracked
+  directories stay in the worktree; `task_paths` anchors the untracked ones (`figures/`, `outputs/`, `logs/`) to the
+  main checkout, so they outlive it.
 - Another task's untracked outputs: `task_paths(<its _common.py>).outputs`. Read the main checkout by absolute
   path; never `cd` into it.
-- Scripts go in `scripts/`: the steps as `NN_<step>.py`, numbered in run order, and batch-job scripts beside the
-  code they run. A batch job gets the main checkout as `$MAIN` from the submit command, never hardcoded, and logs to
-  `PATHS.logs`; how to submit it is the compute environment's concern.
+- Batch-job scripts go beside the code they run. A batch job gets the main checkout as `$MAIN` from the submit
+  command, never hardcoded, and logs to `PATHS.logs`; how to submit it is the compute environment's concern.
 - A deliverable that states a number may carry `scripts/verify.py` re-deriving it. A code package's invariants
   belong in that package's tests.
 
@@ -80,32 +67,12 @@ repo, a short summary.
 1. The agreed deliverables, and the README brought up to date, its jobs counted with the compute environment's
    tools.
 2. Write back: dry run, sign-off on that diff, then `yes=True`.
-3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off: a working object into
-   `working/`, anything else into a subdirectory with a descriptive name. Ask which subdirectory; record the path.
+3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off. Ask which subdirectory;
+   record the path.
 4. `analysis-workflow check layout`, then push.
 5. Open the PR, its body from the PR template; then add it with a short summary to the README and push again. The
    body is edited until the merge, never after.
 6. The worktree is removed only once no batch job submitted from it is still queued or running.
-
-## Data
-
-| `data/<dataset>/` | holds | written by |
-| --- | --- | --- |
-| `raw/` | bytes as they arrived | nobody, after arrival |
-| `resources/` | curated inputs that are not data: gene lists, marker tables | a human, rarely |
-| `processed/` | objects code loads: working objects in `working/`, others in descriptively named subdirectories | notebooks; tasks by promotion |
-| `results/` | a notebook's own outputs, prefixed with its stem | humans only |
-
-**Working objects** are AnnData zarr stores, `processed/working/<name>_<YYYY-MM-DD>.zarr`, in which results
-accumulate.
-- Read only what you need: `ad.io.read_elem(zarr.open_group(path)["obs"])`, or `ad.experimental.read_lazy`.
-- Write back only through `commit_adata`: additions only. Never write an in-memory object over a working object.
-  Changing or removing a key means a new dated copy; recomputing an existing key is a silent no-op.
-- Keys carry the task's version suffix (`obs["niche_v3"]`) and are listed in its README.
-- Labels: one categorical `obs` column, colours in `uns["<key>_colors"]`, as the existing annotations do.
-- A result that would grow the object materially (`analyze_anndata_size`) becomes a standalone AnnData on the same
-  `obs_names`, never a bare `.npy`.
-- Everything else is written plainly.
 
 ## Environments
 
@@ -132,5 +99,5 @@ accumulate.
 
 ## Review
 
-A repo's PR template and the generic half of its `REVIEW_GUIDE.md`, for reviewers that cannot load this plugin,
-come from [the analysis template](https://github.com/quadbio/analysis_template/tree/main/%7B%7Bcookiecutter.project_name%7D%7D).
+A repo's `CONVENTIONS.md`, its PR template and the generic half of its `REVIEW_GUIDE.md`, for humans and reviewers
+that cannot load this plugin, come from [the analysis template](https://github.com/quadbio/analysis_template/tree/main/%7B%7Bcookiecutter.project_name%7D%7D).

@@ -157,9 +157,7 @@ def test_pixi_allows_the_main_checkout(repo):
     assert run("guard_worktree_pixi.py", bash("pixi install", main)) == 0
 
 
-TEMPLATE_README = (
-    Path(__file__).parents[1] / "skills" / "analysis-workflow" / "assets" / "task_template" / "README.md"
-).read_text()
+TEMPLATE_README = (Path(__file__).parents[1] / "src" / "analysis_workflow" / "task_template" / "README.md").read_text()
 
 
 def readme(title: str = "demo_v1") -> str:
@@ -172,6 +170,7 @@ def test_layout_allows_the_template_readme_and_its_files(repo):
     for rel, content in [
         ("README.md", readme()),
         ("scripts/01_step.py", "x = 1"),
+        ("notebooks/01_step.ipynb", "{}"),
         ("results/a.csv", "a"),
         ("pixi.toml", "[workspace]\n"),  # a task-local environment
         ("outputs/model_v1/config.json", "{}"),  # a versioned folder inside the task

@@ -14,10 +14,22 @@ TRACKED_TASK_DIRS = ("results", "reports")
 #: Task subdirectories git ignores: heavy or noisy, anchored to the main checkout.
 UNTRACKED_TASK_DIRS = ("figures", "outputs", "logs")
 
+#: A task's notebooks, tracked; agents may leave it empty, so the task template does not carry it.
+NOTEBOOK_DIR = "notebooks"
+
 #: Directory names that are *inside* a task rather than a task themselves.
 RESERVED_TASK_SUBDIRS = frozenset(
-    {*TRACKED_TASK_DIRS, *UNTRACKED_TASK_DIRS, "scripts", "slurm", "notebooks", "audits", "docs"}
+    {*TRACKED_TASK_DIRS, *UNTRACKED_TASK_DIRS, NOTEBOOK_DIR, "scripts", "slurm", "audits", "docs"}
 )
+
+#: A task directory's name says which lane made it: `human_<name>_vN` or `agent_<name>_vN`.
+LANES = ("human", "agent")
+
+#: The template every task directory starts from, shipped with this package.
+TASK_TEMPLATE = Path(__file__).parent / "task_template"
+
+#: The analysis repo's starter notebook, relative to its root; the repo's template owns it.
+NOTEBOOK_TEMPLATE = Path("templates") / "notebook.ipynb"
 
 #: Tooling that keeps its own ``logs/`` or ``results/`` and must not be read as a task.
 NON_TASK_DIRS = frozenset({".pixi", ".git", ".venv", "wandb", "site-packages", "node_modules", "__pycache__"})
@@ -73,20 +85,21 @@ class TaskPaths:
         return self
 
 
-def task_paths(file: str | Path) -> TaskPaths:
+def task_paths(file: str | Path | None = None) -> TaskPaths:
     """Resolve the output directories for the task that ``file`` belongs to.
 
-    Pass ``__file__``. The task directory is the nearest ancestor under ``analysis/`` whose name
-    is not a known task subdirectory, so ``<task>/_common.py`` and ``<task>/scripts/_common.py``
-    both resolve to ``<task>``.
+    A script passes ``__file__``. A notebook, which has none, passes nothing: the kernel's working
+    directory, which Jupyter and VS Code set to the notebook's, stands in. The task directory is the
+    nearest ancestor under ``analysis/`` whose name is not a known task subdirectory, so
+    ``<task>/_common.py``, ``<task>/scripts/_common.py`` and ``<task>/notebooks/`` all resolve to ``<task>``.
     """
-    path = Path(file).resolve()
+    path = Path(file).resolve() if file is not None else Path.cwd().resolve()
     checkout, main = _checkouts_of(path)
     analysis = checkout / ANALYSIS_DIR
     if not path.is_relative_to(analysis):
         raise ValueError(f"{path} is not under the checkout's '{ANALYSIS_DIR}/' directory, {analysis}")
 
-    task = path.parent
+    task = path.parent if file is not None else path
     while task.name in RESERVED_TASK_SUBDIRS:
         task = task.parent
     if task == analysis:
