@@ -31,7 +31,8 @@ beside their other repos). Then:
    match inside every task directory, and their re-includes keep READMEs, placeholders and task evidence tracked.
    `.gitattributes`: the template's `pixi.lock` line, so a lock conflict keeps one side whole.
 4. Remove any notebook-output stripping (`nbstripout` in `.gitattributes`, its install step, its CI check).
-5. Copy the template's `REVIEW_GUIDE.md`, adding the repo's own rules under its last heading, and its
+5. Copy the template's `CONVENTIONS.md`, `templates/notebook.ipynb` (the starter notebook; replace its package
+   import with the repo's), `REVIEW_GUIDE.md`, adding the repo's own rules under its last heading, and
    `.github/pull_request_template.md`.
 6. In `AGENTS.md`, one short section naming the plugin and where the working objects live; delete restated rules.
 7. `uvx cruft link https://github.com/quadbio/analysis_template`, so the repo receives the template's updates.

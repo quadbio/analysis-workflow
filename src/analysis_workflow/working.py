@@ -8,6 +8,7 @@ additions fail loudly (``KeyError``), never silently.
 """
 
 import logging
+from collections.abc import Iterable, Mapping
 
 import zarr
 from anndata import AnnData
@@ -48,11 +49,25 @@ def _describe(value) -> str:
     return f"shape {tuple(shape)}" if shape is not None else type(value).__name__
 
 
-def commit_adata(adata: AnnData, path, *, yes: bool = False) -> dict[str, list[str]]:
-    """Write keys that are in ``adata`` but not yet in the zarr store at ``path``.
+def _refuse_taken(path, slot: str, names: list[str], on_disk) -> None:
+    """Raise if any of ``names`` is already in ``slot`` on disk; checked again just before writing it."""
+    if taken := [k for k in names if k in on_disk]:
+        raise KeyError(
+            f"Already in {path}: {', '.join(f'{slot}[{k!r}]' for k in taken)}. Use another name, or make a new "
+            "dated copy to change a key."
+        )
 
-    Dry run by default: with ``yes=False`` the additions are logged and nothing is written. Keys
-    already on disk are never written, so ``adata`` may hold just the slot you read and your new keys.
+
+def commit_adata(adata: AnnData, path, *, keys: Mapping[str, Iterable[str]], yes: bool = False) -> dict[str, list[str]]:
+    """Write the ``keys`` of ``adata`` to the zarr store at ``path``, where none of them may exist yet.
+
+    Dry run by default: with ``yes=False`` the additions are logged and nothing is written. Only the
+    listed keys are written, so ``adata`` may also hold what you read.
+
+    Parameters
+    ----------
+    keys
+        The keys to add, per slot: ``{"obs": ["leiden_fine"], "obsm": ["X_scvi"]}``.
 
     Returns
     -------
@@ -60,10 +75,14 @@ def commit_adata(adata: AnnData, path, *, yes: bool = False) -> dict[str, list[s
 
     Raises
     ------
+    KeyError
+        If a key is not in ``adata``, or is already in the store: changing a key means a new dated copy.
     ValueError
-        If the store has consolidated metadata, which would make the additions invisible to
-        readers, or if another session is concurrently rewriting ``obs``/``var``.
+        If a slot is unknown, if the store has consolidated metadata, which would make the additions
+        invisible to readers, or if another session is concurrently rewriting ``obs``/``var``.
     """
+    if unknown := set(keys) - set(SLOTS):
+        raise ValueError(f"Unknown slot(s) {sorted(unknown)}; keys go in {', '.join(SLOTS)}.")
     root = zarr.open_group(str(path), mode="a")
     if root.metadata.consolidated_metadata is not None:
         raise ValueError(
@@ -73,8 +92,11 @@ def commit_adata(adata: AnnData, path, *, yes: bool = False) -> dict[str, list[s
         )
 
     mine, theirs = _in_memory(adata), keys_on_disk(path)
-    new = {slot: sorted(mine[slot] - theirs[slot]) for slot in SLOTS}
-    new = {slot: keys for slot, keys in new.items() if keys}
+    new = {slot: sorted(set(ks)) for slot, ks in keys.items() if ks}
+    if missing := [f"{slot}[{k!r}]" for slot, ks in new.items() for k in ks if k not in mine[slot]]:
+        raise KeyError(f"Not in adata: {', '.join(missing)}.")
+    for slot, names in new.items():
+        _refuse_taken(path, slot, names, theirs[slot])
 
     lines = [f"  + {slot}[{k!r}]  {_describe(getattr(adata, slot)[k])}" for slot, ks in new.items() for k in ks]
     logger.info("Committing to %s:\n%s", path, "\n".join(lines) if lines else "  nothing to write")
@@ -83,7 +105,7 @@ def commit_adata(adata: AnnData, path, *, yes: bool = False) -> dict[str, list[s
             logger.info("Dry run (yes=False): %s unchanged. Re-run with yes=True to write.", path)
         return new
 
-    for slot, keys in new.items():
+    for slot, names in new.items():
         if slot in FRAME_SLOTS:
             # The column set lives in the parent's ``column-order``, so the element is rewritten.
             # Read it fresh first, to carry forward columns another session added since.
@@ -94,11 +116,13 @@ def commit_adata(adata: AnnData, path, *, yes: bool = False) -> dict[str, list[s
                     f"Could not read {slot!r} from {path}: another session is most likely "
                     "rewriting it right now. Nothing was written; re-run in a moment."
                 ) from err
-            for key in keys:
+            _refuse_taken(path, slot, names, frame.columns)
+            for key in names:
                 frame[key] = getattr(adata, slot)[key]
             write_elem(root, slot, frame)
         else:
-            for key in keys:
+            _refuse_taken(path, slot, names, root[slot] if slot in root else ())
+            for key in names:
                 write_elem(root[slot], key, getattr(adata, slot)[key])
 
     logger.info("Committed to %s.", path)

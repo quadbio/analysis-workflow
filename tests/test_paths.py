@@ -62,3 +62,13 @@ def test_ensure_creates_dirs_and_resolving_does_not(repo):
     assert not any(d.exists() for d in dirs)
     paths.ensure()
     assert all(d.is_dir() for d in dirs)
+
+
+@pytest.mark.parametrize("sub", ["", "notebooks"])
+def test_task_paths_from_a_notebooks_working_directory(repo, monkeypatch, sub):
+    """A notebook has no __file__; Jupyter starts its kernel in the notebook's directory."""
+    main, _ = repo
+    task = main / "analysis" / "topic" / "demo_v1"
+    (task / sub).mkdir(exist_ok=True)
+    monkeypatch.chdir(task / sub)
+    assert task_paths() == task_paths(task / "scripts" / "_common.py")

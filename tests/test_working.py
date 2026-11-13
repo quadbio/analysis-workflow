@@ -39,7 +39,7 @@ def store(tmp_path, adata):
 
 def test_dry_run_writes_nothing(store, adata):
     adata.obsm["X_new"] = np.zeros((adata.n_obs, 2))
-    assert commit_adata(adata, store) == {"obsm": ["X_new"]}
+    assert commit_adata(adata, store, keys={"obsm": ["X_new"]}) == {"obsm": ["X_new"]}
     assert "X_new" not in keys_on_disk(store)["obsm"]
 
 
@@ -47,7 +47,7 @@ def test_adds_to_mapping_slots(store, adata):
     adata.obsm["X_new"] = np.ones((adata.n_obs, 2))
     adata.obsp["graph"] = sp.eye(adata.n_obs, format="csr")
     adata.uns["note"] = {"hello": "world"}
-    commit_adata(adata, store, yes=True)
+    commit_adata(adata, store, keys={"obsm": ["X_new"], "obsp": ["graph"], "uns": ["note"]}, yes=True)
 
     back = ad.read_zarr(store)
     assert np.array_equal(back.obsm["X_new"], np.ones((adata.n_obs, 2)))
@@ -59,7 +59,7 @@ def test_adds_to_mapping_slots(store, adata):
 def test_adds_obs_and_var_columns(store, adata):
     adata.obs["niche_v3"] = pd.Categorical(["x", "y"] * (adata.n_obs // 2))
     adata.var["flag"] = np.arange(adata.n_vars)
-    commit_adata(adata, store, yes=True)
+    commit_adata(adata, store, keys={"obs": ["niche_v3"], "var": ["flag"]}, yes=True)
 
     back = ad.read_zarr(store)
     assert "niche_v3" in back.obs.columns
@@ -67,14 +67,42 @@ def test_adds_obs_and_var_columns(store, adata):
     assert list(back.obs["a"]) == list(adata.obs["a"])  # pre-existing column preserved
 
 
-def test_existing_keys_are_never_rewritten(store, adata):
-    """Another session's key must survive even if ours has the same name and different values."""
+@pytest.mark.parametrize("yes", [False, True])
+def test_a_key_already_on_disk_raises(store, adata, yes):
+    """Another session's key survives, and the collision is loud, dry run included."""
     root = zarr.open_group(str(store), mode="a")
     write_elem(root["obsm"], "X_shared", np.full((adata.n_obs, 2), 7.0))
 
     adata.obsm["X_shared"] = np.zeros((adata.n_obs, 2))
-    assert commit_adata(adata, store, yes=True) == {}
+    adata.obsm["X_new"] = np.zeros((adata.n_obs, 2))
+    with pytest.raises(KeyError, match=r"Already in .*obsm\['X_shared'\]"):
+        commit_adata(adata, store, keys={"obsm": ["X_new", "X_shared"]}, yes=yes)
+    on_disk = keys_on_disk(store)["obsm"]
+    assert "X_new" not in on_disk
     assert np.array_equal(ad.read_zarr(store).obsm["X_shared"], np.full((adata.n_obs, 2), 7.0))
+
+
+def test_recomputing_a_read_column_raises(store, adata):
+    adata.obs["a"] = 0
+    with pytest.raises(KeyError, match="Already in"):
+        commit_adata(adata, store, keys={"obs": ["a"]})
+
+
+def test_writes_only_the_listed_keys(store, adata):
+    adata.obsm["X_new"] = np.zeros((adata.n_obs, 2))
+    adata.obsm["X_scratch"] = np.zeros((adata.n_obs, 2))
+    commit_adata(adata, store, keys={"obsm": ["X_new"]}, yes=True)
+    assert {"X_new", "X_pca"} == keys_on_disk(store)["obsm"]
+
+
+def test_a_listed_key_missing_from_adata_raises(store, adata):
+    with pytest.raises(KeyError, match="Not in adata"):
+        commit_adata(adata, store, keys={"obsm": ["X_typo"]})
+
+
+def test_an_unknown_slot_raises(store, adata):
+    with pytest.raises(ValueError, match="Unknown slot"):
+        commit_adata(adata, store, keys={"obsx": ["X_new"]})
 
 
 def test_carries_forward_a_concurrent_obs_column(store, adata):
@@ -85,7 +113,7 @@ def test_carries_forward_a_concurrent_obs_column(store, adata):
     write_elem(root, "obs", frame)
 
     adata.obs["mine"] = np.ones(adata.n_obs)
-    commit_adata(adata, store, yes=True)
+    commit_adata(adata, store, keys={"obs": ["mine"]}, yes=True)
 
     cols = ad.read_zarr(store).obs.columns
     assert "mine" in cols and "theirs" in cols
@@ -98,7 +126,7 @@ def test_partial_read_then_commit(store, adata):
 
     partial = ad.AnnData(obs=obs, var=pd.DataFrame(index=adata.var_names))
     partial.obsm["X_derived"] = np.zeros((len(obs), 2))
-    commit_adata(partial, store, yes=True)
+    commit_adata(partial, store, keys={"obsm": ["X_derived"]}, yes=True)
 
     back = ad.read_zarr(store)
     assert "X_derived" in back.obsm
@@ -110,7 +138,7 @@ def test_refuses_a_consolidated_store(tmp_path, adata):
     adata.write_zarr(path, consolidate_metadata=True)
     adata.obsm["X_new"] = np.zeros((adata.n_obs, 2))
     with pytest.raises(ValueError, match="consolidated metadata"):
-        commit_adata(adata, path, yes=True)
+        commit_adata(adata, path, keys={"obsm": ["X_new"]}, yes=True)
 
 
 def test_consolidated_metadata_hides_new_keys(tmp_path, adata):

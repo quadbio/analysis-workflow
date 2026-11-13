@@ -2,7 +2,7 @@
 """Keep every task directory in the template's layout.
 
 A task directory (`analysis/<dataset>/<topic>/.../<name>_vN/`) holds at its top only what the task template holds
-(`skills/analysis-workflow/assets/task_template/`), the output directories of `task_paths` and a task-local
+(`src/analysis_workflow/task_template/`), its `notebooks/`, the output directories of `task_paths` and a task-local
 environment. Its README's title is the directory's name, and its other headings are the template README's, all of
 them and in order. Both are read from their sources, the template and `paths.py`, so a change there is a change here.
 
@@ -24,7 +24,8 @@ from pathlib import Path
 from _repo import adopted, checkouts
 
 PLUGIN = Path(__file__).parents[1]
-TEMPLATE = PLUGIN / "skills" / "analysis-workflow" / "assets" / "task_template"
+PACKAGE = PLUGIN / "src" / "analysis_workflow"
+TEMPLATE = PACKAGE / "task_template"
 TASK_DIR = re.compile(r".+_v\d+$")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 FENCE = re.compile(r"^\s*(```|~~~)")
@@ -32,13 +33,13 @@ FENCE = re.compile(r"^\s*(```|~~~)")
 TASK_ENVIRONMENT = {"pixi.toml", "pixi.lock"}
 
 
-def output_dirs() -> set[str]:
-    """The task output directories, read from the package's `paths.py` without running it.
+def task_dirs() -> set[str]:
+    """The task's notebook and output directories, read from the package's `paths.py` without running it.
 
     The package targets a newer Python than this hook, and may not be installed.
     """
-    names = ("TRACKED_TASK_DIRS", "UNTRACKED_TASK_DIRS")
-    tree = ast.parse((PLUGIN / "src" / "analysis_workflow" / "paths.py").read_text())
+    names = ("NOTEBOOK_DIR", "TRACKED_TASK_DIRS", "UNTRACKED_TASK_DIRS")
+    tree = ast.parse((PACKAGE / "paths.py").read_text())
     found = {
         target.id: ast.literal_eval(node.value)
         for node in tree.body
@@ -46,12 +47,12 @@ def output_dirs() -> set[str]:
         for target in node.targets
         if isinstance(target, ast.Name) and target.id in names
     }
-    return {d for name in names for d in found[name]}
+    return {found["NOTEBOOK_DIR"], *found["TRACKED_TASK_DIRS"], *found["UNTRACKED_TASK_DIRS"]}
 
 
 def allowed() -> set[str]:
     """What the top of a task directory may hold."""
-    return {p.name for p in TEMPLATE.iterdir()} | output_dirs() | TASK_ENVIRONMENT
+    return {p.name for p in TEMPLATE.iterdir()} | task_dirs() | TASK_ENVIRONMENT
 
 
 def headings(text: str) -> list[tuple[int, str]]:

@@ -1,15 +1,15 @@
 # analysis-workflow
 
-A Claude Code plugin for computational-biology analysis repos where humans work in Jupyter notebooks and
-coding agents work in scripts, side by side. It encodes one way of keeping that safe: one task per agent
-session, git worktree and versioned directory; output paths that survive the worktree being removed; and a
-shared AnnData zarr *working object* per dataset that grows by additive write-back only.
+A Claude Code plugin for computational-biology analysis repos where humans and coding agents work side by side.
+Both follow the analysis template's `CONVENTIONS.md`: versioned task directories, output paths that survive a git
+worktree being removed, and a shared AnnData zarr *working object* per dataset that grows by additive write-back
+only. The plugin adds what only agents do: one task per session, git worktree and pull request.
 
 | Part | What it does |
 | --- | --- |
-| `skills/analysis-workflow/` | The conventions: repo model, human and agent lanes, task lifecycle, `data/` layout, working objects, environments. Loaded on demand. |
+| `skills/analysis-workflow/` | The agent's side: task lifecycle in a worktree, sign-off, PRs, environments, setting up repos. Loaded on demand. |
 | `hooks/` | Always-on core rules and the main checkout's environment at session start; blocks worktree-unsafe output paths, `pixi install` in a worktree, and task directories off the template. |
-| `src/analysis_workflow/` | `task_paths`, `main_checkout`, `commit_adata`, `keys_on_disk`, `analyze_anndata_size`, and `analysis-workflow check layout`. |
+| `src/analysis_workflow/` | `task_paths`, `main_checkout`, `commit_adata`, `keys_on_disk`, `analyze_anndata_size`; the task template; `analysis-workflow new` and `check layout`. |
 
 It assumes analysis repos made from [analysis_template](https://github.com/quadbio/analysis_template)
 (pixi-managed) and code repos from the [scverse cookiecutter](https://github.com/scverse/cookiecutter-scverse)
@@ -24,15 +24,16 @@ branches from `origin`'s default branch but runs on the main checkout's environm
 claude --worktree <task>
 ```
 
-1. The agent works on that worktree's branch, in a new task directory `analysis/<dataset>/<topic>/<task>_vN/`; a later
-   answer to the same question gets the next version, in a new session. Earlier task directories are never edited.
+1. The agent works on that worktree's branch, in a new task directory `analysis/<dataset>/<topic>/agent_<task>_vN/`;
+   a later answer to the same question gets the next version, in a new session. Earlier task directories are never
+   edited.
 2. It asks you which working object is current and agrees what the task delivers (by default your `deliverables`
    setting), then works in scripts; outputs go to the task directory.
 3. Results reach a shared working object only after you sign off the dry run.
 4. It opens a PR whose body holds the details; the task README summarizes each PR. Once it is merged and its batch
    jobs have finished, leave with `/exit` and remove the worktree.
 
-Notebooks stay with you, in the main checkout. A task that changes the environment locks, installs and tests
+You work the same way, in `human_` task directories in the main checkout (the template's `CONVENTIONS.md`). A task that changes the environment locks, installs and tests
 it in a temporary checkout beside the main one; after its merge you pull and run `pixi install` there. With no
 analysis repo yet, ask Claude to start an analysis project: the skill sets one up.
 
