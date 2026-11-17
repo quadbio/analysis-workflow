@@ -386,6 +386,7 @@ def test_session_start_without_an_installed_environment(repo, fake_pixi, tmp_pat
         "cp -a {wt}/analysis/topic/demo_v1/outputs/x.zarr {main}/data/ds/processed/working/x.zarr",
         "cd /tmp && rsync -a outputs/x.zarr {main}/data/ds/processed/",
         "mv -t {main}/data/ds/processed/stores a.zarr b.zarr",
+        "rsync -r -t outputs/x.zarr {main}/data/ds/processed/x.zarr",  # to rsync, -t keeps times
         "cp -r outputs/x.zarr data/ds/processed/working/",  # relative to the worktree
     ],
 )
