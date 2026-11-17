@@ -127,7 +127,7 @@ def current_task() -> TaskPaths:
     if script is not None:
         try:
             return task_paths(script)
-        except ValueError:  # run by something outside `analysis/`, such as a notebook kernel's launcher
+        except (ValueError, RuntimeError):  # run by a launcher outside `analysis/`, or outside any checkout
             pass
     return task_paths()
 
