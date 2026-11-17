@@ -185,7 +185,8 @@ def test_layout_allows_the_template_readme_and_its_files(repo):
         readme().replace("## Jobs", "## Notes"),  # a section renamed
         readme().replace("## Jobs\n", ""),  # a section dropped
         readme() + "\n## Notes\n",  # a section added
-        readme().replace("## Inputs\n", "## Inputs\n\n### Working object\n"),  # a subheading
+        readme().replace("## Write-back\n", "## Write-back\n\n### Working object\n"),  # a subheading
+        readme().replace("## Write-back\n", "## Inputs\n\n## Write-back\n"),  # a section the template dropped
     ],
 )
 def test_layout_blocks_a_readme_off_the_template(repo, content):

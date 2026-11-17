@@ -44,9 +44,10 @@ branch, merged through one or more PRs; a later answer to the same question is t
 **Start**
 1. `analysis-workflow new analysis/<dataset>/<topic>/agent_<name>_vN --author "<your model>"`; if `vN` is not the
    next version, it names the one that is.
-2. Settle what session rule 3 asks, the working object with its label keys and the deliverables, and record both in
-   the README. Deliverables are any of a report, a figure, an HTML page, just results in `outputs/` and a
-   write-back; start from the default the session start lists, if any, which the human may change for this task.
+2. Settle what session rule 3 asks: the working object with its label keys, set in `scripts/_common.py`, and the
+   deliverables, recorded in the README. Deliverables are any of a report, a figure, an HTML page, just results in
+   `outputs/` and a write-back; start from the default the session start lists, if any, which the human may change
+   for this task.
 
 **Run**
 - `PATHS = task_paths(__file__)` lives in `scripts/_common.py`; call `PATHS.ensure()` in the writer. The tracked

@@ -8,7 +8,8 @@ analysis code, outputs or data. Always:
    `declare-inputs` skill writing their `inputs.yaml`.
 2. Every output path comes from `task_paths(__file__)` (package `analysis_workflow`); never a bare relative path.
 3. Ask the human which working object (and which label keys) is current, never inferring it from a script or the
-   newest file name; and agree what the task delivers (a default, if set, is listed below), recorded in its README.
+   newest file name, and set it in the task's `scripts/_common.py`; and agree what the task delivers (a default, if
+   set, is listed below), recorded in its README.
 4. Shared objects grow by addition only, and every write to shared storage sits in a `writes` block, which records
    in the store which task wrote what. Such a write needs the human's sign-off first (for `commit_adata`, on its
    dry run) and never runs from a batch job.
