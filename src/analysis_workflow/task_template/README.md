@@ -28,8 +28,8 @@ otherwise; a later change is recorded here too. -->
 
 ## Write-back
 
-<!-- What went into a shared object, under which keys, and anything placed in `data/<dataset>/processed/` with its
-final path. -->
+<!-- What each key written to a shared object holds, and the final path of anything placed in
+`data/<dataset>/processed/`. Which task wrote a key is recorded in the store itself. -->
 
 - `obs["<key>"]`: one line on what it holds
 

@@ -1,9 +1,13 @@
 """Where an analysis task's outputs go, so that none of them dies with a git worktree."""
 
+import secrets
 import subprocess
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+
+import yaml
 
 #: The directory under the repo root that holds notebooks and task directories.
 ANALYSIS_DIR = "analysis"
@@ -27,6 +31,9 @@ LANES = ("human", "agent")
 
 #: The template every task directory starts from, shipped with this package.
 TASK_TEMPLATE = Path(__file__).parent / "task_template"
+
+#: A task's id and the inputs it consumed, at the top of its directory.
+INPUTS_FILE = "inputs.yaml"
 
 #: The analysis repo's starter notebook, relative to its root; the repo's template owns it.
 NOTEBOOK_TEMPLATE = Path("templates") / "notebook.ipynb"
@@ -114,3 +121,25 @@ def task_paths(file: str | Path | None = None) -> TaskPaths:
         outputs=main_task / "outputs",
         logs=main_task / "logs",
     )
+
+
+def current_task() -> TaskPaths:
+    """The task the running code belongs to: the script being run, or in a notebook the working directory."""
+    script = getattr(sys.modules.get("__main__"), "__file__", None)
+    if script is not None:
+        try:
+            return task_paths(script)
+        except ValueError:  # run by something outside `analysis/`, such as a notebook kernel's launcher
+            pass
+    return task_paths()
+
+
+def task_id(task: str | Path) -> str:
+    """The id in the task directory's ``inputs.yaml``; a task made before ids gets one on first use."""
+    file = Path(task) / INPUTS_FILE
+    text = file.read_text() if file.exists() else ""
+    if found := (yaml.safe_load(text) or {}).get("task"):
+        return str(found)
+    new = secrets.token_hex(4)
+    file.write_text(f"task: {new}\n{text}")
+    return new

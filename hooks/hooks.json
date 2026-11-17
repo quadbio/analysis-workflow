@@ -1,5 +1,5 @@
 {
-  "description": "analysis-workflow, in repos that enable it: always-on core rules, plus guards against worktree-unsafe output paths, pixi installs and task directories off the template.",
+  "description": "analysis-workflow, in repos that enable it: always-on core rules, plus guards against worktree-unsafe output paths, pixi installs, shell copies into shared storage and task directories off the template.",
   "hooks": {
     "SessionStart": [
       {
@@ -19,6 +19,11 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_worktree_pixi.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_shared_writes.py\"",
             "timeout": 10
           }
         ]
