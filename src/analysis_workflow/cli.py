@@ -213,7 +213,7 @@ def provenance(store: Path = typer.Argument(..., help="An AnnData or SpatialData
 def inputs(
     tasks: list[Path] = typer.Argument(None, help="Task directories; by default every task of this checkout."),
 ) -> None:
-    """Report tasks whose `inputs.yaml` lists no inputs, lists something that is not there, or is out of date."""
+    """Report tasks that have no `inputs.yaml`, or whose list names something that is not there or is out of date."""
     found = [t.resolve() for t in tasks] if tasks else task_dirs(_checkouts_of(Path.cwd())[0])
     undeclared = [t for t in found if declared(t) is None]
     missing = [(t, what) for t in found for what in missing_inputs(t)]

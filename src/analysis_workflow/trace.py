@@ -25,6 +25,7 @@ from analysis_workflow.paths import (
     RESERVED_TASK_SUBDIRS,
     UNTRACKED_TASK_DIRS,
     _checkouts_of,
+    task_id,
 )
 from analysis_workflow.provenance import TIME, keys, records, uncovered
 
@@ -35,17 +36,16 @@ SOURCE_DIRS = frozenset({"raw", "resources"})
 
 
 def declared(task: Path) -> list[dict] | None:
-    """The inputs a task's ``inputs.yaml`` lists; None when it lists none yet (an empty list is a list)."""
+    """The inputs a task's ``inputs.yaml`` lists; None when the task has no such file yet."""
     file = task / INPUTS_FILE
-    found = (yaml.safe_load(file.read_text()) or {}).get("inputs") if file.exists() else None
-    return None if found is None else [dict(entry) for entry in found]
+    return [dict(entry) for entry in yaml.safe_load(file.read_text()) or []] if file.exists() else None
 
 
 def task_dirs(checkout: Path) -> list[Path]:
-    """The task directories of a checkout: those with an ``inputs.yaml``, or named `<name>_vN` with a README."""
+    """The task directories of a checkout: those named `<name>_vN` that hold a README."""
     found = []
     for directory, subdirs, files in os.walk(checkout / ANALYSIS_DIR):
-        is_task = INPUTS_FILE in files or (TASK_DIR.fullmatch(Path(directory).name) and "README.md" in files)
+        is_task = bool(TASK_DIR.fullmatch(Path(directory).name)) and "README.md" in files
         if is_task:
             found.append(Path(directory))
         skip = RESERVED_TASK_SUBDIRS if is_task else set(UNTRACKED_TASK_DIRS)
@@ -121,12 +121,11 @@ class _Walk:
         for root in self.roots:
             for task in task_dirs(root):
                 rel = task.relative_to(root)
-                text = (task / INPUTS_FILE).read_text() if (task / INPUTS_FILE).exists() else ""
-                found = (yaml.safe_load(text) or {}).get("task")
-                if found and self.tasks.setdefault(str(found), rel) != rel:
+                found = task_id(task)
+                if found and self.tasks.setdefault(found, rel) != rel:
                     raise ValueError(
-                        f"Task id {found} is in both {self.tasks[str(found)]} and {rel}: a copied task directory? "
-                        f"Remove the `task:` line from the copy's {INPUTS_FILE}."
+                        f"Task id {found} is in both {self.tasks[found]} and {rel}: a copied task directory? "
+                        "`analysis-workflow new` gives each task its own."
                     )
         self.trace = Trace(target="")
         self._expanded: set[str] = set()

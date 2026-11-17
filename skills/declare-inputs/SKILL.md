@@ -29,18 +29,16 @@ Given several, hand each to its own subagent, with this section as its brief.
 
    Leave out what the task writes itself, and keys it wrote and then reads back.
 3. Resolve a path the code builds at run time (a date, a section name, a glob) against what is on disk.
-4. Write the list below the task's id, which stays as it is. Paths inside the repo are relative to its root; keys
-   are named as the store's records name them. A task that consumes nothing gets `inputs: []`.
+4. Write the list, and nothing else, to `<task>/inputs.yaml`. Paths inside the repo are relative to its root; keys
+   are named as the store's records name them. A task that consumes nothing gets `[]`.
 
    ```yaml
-   task: "7f3a9c2e"
-   inputs:
-     - path: data/<dataset>/processed/working/<object>.zarr
-       keys: [obs/annot_l2, obsm/X_pca, X]
-     - path: data/<dataset>/processed/spatialdata/<section>.zarr
-       keys: [shapes/cells, tables/table/obs/sample]
-     - path: analysis/<dataset>/<topic>/<other_task>/outputs/<file>
-     - path: data/<dataset>/raw/<file>
+   - path: data/<dataset>/processed/working/<object>.zarr
+     keys: [obs/annot_l2, obsm/X_pca, X]
+   - path: data/<dataset>/processed/spatialdata/<section>.zarr
+     keys: [shapes/cells, tables/table/obs/sample]
+   - path: analysis/<dataset>/<topic>/<other_task>/outputs/<file>
+   - path: data/<dataset>/raw/<file>
    ```
 
 5. `analysis-workflow check inputs <task directory>`, and correct what it reports.

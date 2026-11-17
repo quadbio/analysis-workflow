@@ -13,7 +13,6 @@ from typer.testing import CliRunner
 
 from analysis_workflow import commit_adata, writes
 from analysis_workflow.cli import app
-from analysis_workflow.paths import task_id
 from analysis_workflow.trace import changed_since_declared, declared, missing_inputs, trace
 
 STORE = "data/ds/processed/working/a.zarr"
@@ -23,10 +22,15 @@ FIGURE = "analysis/ds/topic/human_fig_v1/outputs/fig.parquet"
 
 
 def declare(task, inputs):
-    """What the `declare-inputs` skill leaves: the id, then the list."""
-    task_id(task)
-    text = (task / "inputs.yaml").read_text()
-    (task / "inputs.yaml").write_text(text + yaml.safe_dump({"inputs": inputs}))
+    """What the `declare-inputs` skill leaves in a task: the list of what its code consumed."""
+    (task / "inputs.yaml").write_text(yaml.safe_dump(inputs))
+
+
+def new_task(path, identity):
+    """A task directory as `analysis-workflow new` leaves it, as far as tracing goes: a README with an id."""
+    path.mkdir(parents=True)
+    (path / "README.md").write_text(f"# {path.name}\n\n**Id:** {identity}\n")
+    return path
 
 
 @pytest.fixture
@@ -35,9 +39,8 @@ def project(repo):
     main, _ = repo
     topic = main / "analysis" / "ds" / "topic"
     tasks = {name: topic / name for name in ("agent_build_v1", "agent_annot_v1", "human_fig_v1")}
-    for task in tasks.values():
-        task.mkdir(parents=True)
-        (task / "README.md").write_text(f"# {task.name}\n")
+    for number, task in enumerate(tasks.values(), start=1):
+        new_task(task, f"{number:08x}")
     store = main / STORE
     store.parent.mkdir(parents=True)
     (main / RAW).parent.mkdir(parents=True)
@@ -98,8 +101,7 @@ def test_a_key_traces_to_the_block_that_wrote_it(project):
 
 def test_a_task_without_declared_inputs_stops_the_trace(project, monkeypatch):
     main, tasks = project
-    file = tasks["agent_annot_v1"] / "inputs.yaml"
-    file.write_text(file.read_text().split("inputs:")[0])
+    (tasks["agent_annot_v1"] / "inputs.yaml").unlink()
     assert declared(tasks["agent_annot_v1"]) is None
     assert trace(main / FIGURE, start=main).undeclared == ["analysis/ds/topic/agent_annot_v1"]
 
@@ -112,8 +114,6 @@ def test_a_file_in_the_home_directory_is_a_source(project, monkeypatch, tmp_path
     main, tasks = project
     monkeypatch.setenv("HOME", str(tmp_path))
     (tmp_path / "model.pkl").write_text("model")
-    file = tasks["agent_build_v1"] / "inputs.yaml"
-    file.write_text(file.read_text().split("inputs:")[0])
     declare(tasks["agent_build_v1"], [{"path": RAW}, {"path": "~/model.pkl"}])
     found = trace(main / STORE, "X", start=main)
     assert found.nodes[str(tmp_path / "model.pkl")]["status"] == "source"
@@ -122,8 +122,7 @@ def test_a_file_in_the_home_directory_is_a_source(project, monkeypatch, tmp_path
 
 def test_an_empty_list_is_declared(project):
     main, tasks = project
-    file = tasks["agent_build_v1"] / "inputs.yaml"
-    file.write_text(file.read_text().split("inputs:")[0] + "inputs: []\n")
+    (tasks["agent_build_v1"] / "inputs.yaml").write_text("[]\n")
     found = trace(main / STORE, "X", start=main)
     assert found.undeclared == [] and names(found) == ["agent_build_v1"]
 
@@ -131,8 +130,7 @@ def test_an_empty_list_is_declared(project):
 def test_a_whole_store_and_a_dated_copy(project):
     """A copy's keys keep their writers; a task that used the whole store rests on every write-back to it."""
     main, tasks = project
-    mint = main / "analysis" / "ds" / "topic" / "human_mint_v1"
-    mint.mkdir()
+    mint = new_task(main / "analysis" / "ds" / "topic" / "human_mint_v1", "000000aa")
     copy = main / "data" / "ds" / "processed" / "working" / "b.zarr"
     with writes(copy, task=mint):
         shutil.copytree(main / STORE, copy)
@@ -141,8 +139,6 @@ def test_a_whole_store_and_a_dated_copy(project):
     found = trace(copy, "obs/annot", start=main)
     assert found.nodes[found.target]["task"].endswith("agent_annot_v1")  # the record travelled with the copy
 
-    declare_again = tasks["human_fig_v1"] / "inputs.yaml"
-    declare_again.write_text(declare_again.read_text().split("inputs:")[0])
     declare(tasks["human_fig_v1"], [{"path": STORE, "keys": ["*"]}])
     whole = trace(main / FIGURE, start=main)
     assert sum(e["target"] == whole.target for e in whole.edges) == 2  # the build's write-back and the annotation's
@@ -151,8 +147,6 @@ def test_a_whole_store_and_a_dated_copy(project):
 def test_a_whole_store_means_its_write_backs_up_to_then(project):
     """What was written to the store after a file was made from it cannot have gone into the file."""
     main, tasks = project
-    file = tasks["human_fig_v1"] / "inputs.yaml"
-    file.write_text(file.read_text().split("inputs:")[0])
     declare(tasks["human_fig_v1"], [{"path": STORE, "keys": ["*"]}])
 
     def write_backs_behind_the_figure(age):
@@ -171,9 +165,7 @@ def test_a_key_without_a_record_and_a_task_that_is_gone(project):
     stray = trace(main / STORE, "obsm/X_stray", start=main)
     assert stray.nodes[stray.target]["status"] == "no record" and stray.tasks() == []
 
-    file = tasks["human_fig_v1"] / "inputs.yaml"  # a task that used the whole store rests on that key too
-    file.write_text(file.read_text().split("inputs:")[0])
-    declare(tasks["human_fig_v1"], [{"path": STORE, "keys": ["*"]}])
+    declare(tasks["human_fig_v1"], [{"path": STORE, "keys": ["*"]}])  # the whole store rests on that key too
     whole = trace(main / FIGURE, start=main)
     assert whole.nodes[f"{STORE}#no record"]["keys"] == ["obsm/X_stray"]
     assert {
@@ -197,8 +189,7 @@ def test_a_copied_task_directory_is_caught(project):
 
 def test_an_unmerged_task_is_found_from_its_worktree(project, repo):
     main, worktree = repo
-    task = worktree / "analysis" / "ds" / "topic" / "agent_late_v1"
-    task.mkdir(parents=True)
+    task = new_task(worktree / "analysis" / "ds" / "topic" / "agent_late_v1", "000000bb")
     adata = ad.AnnData(obs=pd.DataFrame({"late": 1}, index=list("abcdef")))
     with writes(main / STORE, task=task):
         commit_adata(adata, main / STORE, keys={"obs": ["late"]}, yes=True)

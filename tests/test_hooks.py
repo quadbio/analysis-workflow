@@ -169,6 +169,7 @@ def test_layout_allows_the_template_readme_and_its_files(repo):
     task = worktree / "analysis" / "topic" / "demo_v1"
     for rel, content in [
         ("README.md", readme()),
+        ("inputs.yaml", "[]\n"),  # written by the declare-inputs skill
         ("scripts/01_step.py", "x = 1"),
         ("notebooks/01_step.ipynb", "{}"),
         ("results/a.csv", "a"),

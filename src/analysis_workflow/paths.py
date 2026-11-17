@@ -30,6 +30,9 @@ LANES = ("human", "agent")
 #: The template every task directory starts from, shipped with this package.
 TASK_TEMPLATE = Path(__file__).parent / "task_template"
 
+#: What a task's code consumed, at the top of its directory; the `declare-inputs` skill writes it.
+INPUTS_FILE = "inputs.yaml"
+
 #: The line of a task's README that holds its id, set by `analysis-workflow new`.
 ID_LINE = re.compile(r"^\*\*Id:\*\*[ \t]*([0-9a-f]+)[ \t]*$", re.MULTILINE)
 
