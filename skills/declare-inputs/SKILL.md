@@ -3,15 +3,15 @@ name: declare-inputs
 description: >-
   Write down what an analysis task consumed: read its scripts and notebooks and list, in the task's `inputs.yaml`,
   the stores with the keys it used, other tasks' files and data files. Use when a task is finished, before its PR;
-  when `analysis-workflow trace` or `check inputs` names tasks without declared inputs; or when asked to declare,
-  update or backfill inputs for one or several task directories.
+  when `analysis-workflow trace` or `check inputs` names tasks without declared inputs; or when asked to declare
+  or update the inputs of one or several task directories.
 ---
 
 # Declare a task's inputs
 
 A task's code is the record of what it consumed. This skill reads it and writes the list to `<task>/inputs.yaml`,
-which `analysis-workflow trace` follows from an artifact back to its sources. It works on any task directory,
-a human's or an agent's, finished long ago or just now. `inputs.yaml` is the one file it adds or changes; nothing
+which `analysis-workflow trace` follows from an artifact back to its sources. It works on a human's task
+directory as on an agent's, finished earlier or just now. `inputs.yaml` is the one file it adds or changes; nothing
 else in an earlier task directory is touched.
 
 ## For each task directory
