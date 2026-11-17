@@ -21,13 +21,14 @@ from pathlib import Path
 from _repo import adopted, checkouts, shell_calls
 
 COMMANDS = frozenset({"cp", "mv", "rsync"})
-#: Options that name the destination directory, in place of the last operand.
+#: Options of `cp` and `mv` that name the destination directory, in place of the last operand. To `rsync`, `-t`
+#: means "keep modification times".
 TARGET_OPTIONS = ("-t", "--target-directory")
 
 
-def destination(args: list[str]) -> str | None:
-    """Where a `cp`, `mv` or `rsync` call writes: its target option, or else its last operand."""
-    for i, arg in enumerate(args):
+def destination(name: str, args: list[str]) -> str | None:
+    """Where a `cp`, `mv` or `rsync` call writes: for `cp` and `mv` its target option, or else its last operand."""
+    for i, arg in enumerate(args if name != "rsync" else []):
         if arg in TARGET_OPTIONS and i + 1 < len(args):
             return args[i + 1]
         if arg.startswith("--target-directory="):
@@ -62,7 +63,7 @@ def main() -> int:
     if not found or not adopted(found[0]):
         return 0
     for name, args in shell_calls(command, COMMANDS) or []:
-        target = destination(args)
+        target = destination(name, args)
         if target is None or any(c in target for c in "$`") or not into_shared_storage(target, cwd, found):
             continue
         print(
