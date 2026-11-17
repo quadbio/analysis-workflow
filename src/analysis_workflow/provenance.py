@@ -21,7 +21,7 @@ import zarr
 from anndata.io import read_elem, write_elem
 from zarr.errors import ContainsGroupError
 
-from analysis_workflow.paths import INPUTS_FILE, TaskPaths, _checkouts_of, current_task, task_id, task_paths
+from analysis_workflow.paths import TaskPaths, _checkouts_of, current_task, task_id, task_paths
 from analysis_workflow.working import CONSOLIDATED, keys_on_disk
 
 logger = logging.getLogger(__name__)
@@ -125,7 +125,7 @@ def _task(task) -> TaskPaths:
     if isinstance(task, TaskPaths):
         return task
     try:
-        return current_task() if task is None else task_paths(Path(task) / INPUTS_FILE)
+        return current_task() if task is None else task_paths(Path(task) / "README.md")
     except (ValueError, RuntimeError) as err:
         raise ValueError(
             "`writes` credits what it records to a task: run it from a task directory, or pass `task=<its directory>`."
@@ -137,7 +137,7 @@ def _consolidated(path) -> bool:
     return _kind(path) == "anndata" and zarr.open_group(str(path), mode="r").metadata.consolidated_metadata is not None
 
 
-def _record(path: Path, before: set[str], task: TaskPaths) -> str | None:
+def _record(path: Path, before: set[str], task: TaskPaths, identity: str) -> str | None:
     """Record what appeared in the store since ``before``; return what broke a rule, if anything did."""
     if _kind(path) is None:
         if before:
@@ -155,7 +155,7 @@ def _record(path: Path, before: set[str], task: TaskPaths) -> str | None:
             ["git", "-C", str(checkout), "branch", "--show-current"], capture_output=True, text=True
         ).stdout.strip()
         record = {
-            "task": task_id(task.task),
+            "task": identity,
             "path": task.task.relative_to(checkout).as_posix(),
             "branch": branch or None,
             "keys": added,
@@ -186,12 +186,18 @@ def writes(path, *, task: TaskPaths | str | Path | None = None):
     Raises
     ------
     ValueError
-        If the code runs in no task directory and ``task`` is not given; if a key that was in the store is gone
+        If the code runs in no task directory and ``task`` is not given, or the task's README has no id; if a
+        key that was in the store is gone
         after the body, since shared stores only grow; or for an AnnData store with consolidated metadata, in
         which a record would be invisible to readers.
     """
     path = Path(path).resolve()
     credited = _task(task)
+    if (identity := task_id(credited.task)) is None:
+        raise ValueError(
+            f"{credited.task / 'README.md'} has no `**Id:**` line, under which the store would record the write. "
+            "`analysis-workflow new` gives a task one."
+        )
     if _consolidated(path):
         raise ValueError(CONSOLIDATED.format(path=path))
     before = keys(path)
@@ -200,7 +206,7 @@ def writes(path, *, task: TaskPaths | str | Path | None = None):
         yield
     finally:  # what the body did write is recorded even when it failed part-way
         _open.discard(path)
-        problem = _record(path, before, credited)
+        problem = _record(path, before, credited, identity)
     if problem:
         raise ValueError(problem)
 

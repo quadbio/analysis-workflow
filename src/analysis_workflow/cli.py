@@ -2,6 +2,7 @@
 
 import datetime
 import re
+import secrets
 import shutil
 import subprocess
 from pathlib import Path
@@ -19,7 +20,6 @@ from analysis_workflow.paths import (
     UNTRACKED_TASK_DIRS,
     _checkouts_of,
     main_checkout,
-    task_id,
 )
 from analysis_workflow.provenance import records, uncovered
 from analysis_workflow.trace import changed_since_declared, declared, missing_inputs, task_dirs, trace
@@ -82,13 +82,13 @@ def new_task(path: Path, author: str, notebook: str | None = None, today: dateti
         "# ": f"# {path.name}",
         "**Date:**": f"**Date:** {today or datetime.date.today()}",
         "**Author:**": f"**Author:** {author}",
+        "**Id:**": f"**Id:** {secrets.token_hex(4)}",
     }
     lines = readme.read_text().splitlines(keepends=True)
     for start, line in fill.items():
         i = next(i for i, old in enumerate(lines) if old.startswith(start))
         lines[i] = line + "\n"
     readme.write_text("".join(lines))
-    task_id(path)
     return path
 
 
