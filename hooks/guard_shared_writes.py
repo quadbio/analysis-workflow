@@ -56,7 +56,7 @@ def main() -> int:
     """Read the hook payload from stdin; return the exit code."""
     payload = json.load(sys.stdin)
     command = payload.get("tool_input", {}).get("command", "")
-    if "processed" not in command or not any(name in command for name in COMMANDS):
+    if not any(name in command for name in COMMANDS):
         return 0
     cwd = Path(payload.get("cwd") or ".").resolve()
     found = checkouts(cwd)

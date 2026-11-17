@@ -395,6 +395,13 @@ def test_shared_writes_blocks_shell_copies_into_processed(repo, command):
     assert run("guard_shared_writes.py", bash(command.format(main=main, wt=worktree), worktree)) == 2
 
 
+def test_shared_writes_blocks_a_relative_copy_from_inside_processed(repo):
+    main, _ = repo
+    inside = main / "data" / "ds" / "processed" / "working"
+    inside.mkdir(parents=True)
+    assert run("guard_shared_writes.py", bash("cp -r /tmp/result.zarr .", inside)) == 2
+
+
 @pytest.mark.parametrize(
     "command",
     [
