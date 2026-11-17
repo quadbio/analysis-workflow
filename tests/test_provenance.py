@@ -160,9 +160,9 @@ def test_a_key_that_is_gone_fails_the_block(store, task):
 
 def test_a_failing_body_keeps_its_error_and_its_record(store, adata, task):
     adata.obsm["X_new"] = np.zeros((adata.n_obs, 2))
-    with pytest.raises(ZeroDivisionError), writes(store, task=task):
+    with pytest.raises(OSError, match="later line"), writes(store, task=task):
         commit_adata(adata, store, keys={"obsm": ["X_new"]}, yes=True)
-        1 / 0
+        raise OSError("a later line fails")
     assert records(store)[-1]["keys"] == ["obsm/X_new"]
 
 
