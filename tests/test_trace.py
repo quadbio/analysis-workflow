@@ -107,6 +107,18 @@ def test_a_task_without_declared_inputs_stops_the_trace(project, monkeypatch):
     assert result.exit_code == 1 and "analysis/ds/topic/agent_annot_v1" in result.output
 
 
+def test_a_file_in_the_home_directory_is_a_source(project, monkeypatch, tmp_path):
+    main, tasks = project
+    monkeypatch.setenv("HOME", str(tmp_path))
+    (tmp_path / "model.pkl").write_text("model")
+    file = tasks["agent_build_v1"] / "inputs.yaml"
+    file.write_text(file.read_text().split("inputs:")[0])
+    declare(tasks["agent_build_v1"], [{"path": RAW}, {"path": "~/model.pkl"}])
+    found = trace(main / STORE, "X", start=main)
+    assert found.nodes[str(tmp_path / "model.pkl")]["status"] == "source"
+    assert missing_inputs(tasks["agent_build_v1"]) == []
+
+
 def test_an_empty_list_is_declared(project):
     main, tasks = project
     file = tasks["agent_build_v1"] / "inputs.yaml"

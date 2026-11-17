@@ -24,7 +24,8 @@ Given several, hand each to its own subagent, with this section as its brief.
    - keys of a shared store it **uses**, not merely loads: a notebook that reads a whole object and plots two
      columns used those two. `*` stands for the whole object, as when the task copies it;
    - files of other tasks: in their `outputs/` or `results/`, and code imported from them;
-   - data files: under `data/`, or outside the repo by absolute path.
+   - data files: under `data/`, or outside the repo by absolute path (`~/...` for a per-user cache, such as a
+     downloaded model).
 
    Leave out what the task writes itself, and keys it wrote and then reads back.
 3. Resolve a path the code builds at run time (a date, a section name, a glob) against what is on disk.

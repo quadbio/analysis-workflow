@@ -132,7 +132,7 @@ class _Walk:
 
     def relative(self, path: str | Path) -> Path:
         """``path`` relative to the repo when it is inside one of its checkouts; else as given, absolute."""
-        path = Path(path)
+        path = Path(path).expanduser()  # `~/...` names a per-user cache, such as a downloaded model
         if not path.is_absolute():
             return path
         for root in self.roots:
