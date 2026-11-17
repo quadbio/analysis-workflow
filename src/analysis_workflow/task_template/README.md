@@ -2,6 +2,7 @@
 
 **Date:** <YYYY-MM-DD, when the task started>
 **Author:** <a human's initials, or the model, e.g. Claude Opus 5.5>
+**Id:** <set by `analysis-workflow new`; shared stores record under it what this task wrote>
 
 <!-- Every heading below stays, in this order, and no others are added; a section with nothing to say reads "None."
 The guidance comments stay too. -->

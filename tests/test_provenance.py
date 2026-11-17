@@ -44,6 +44,7 @@ def task(repo):
 def other(repo):
     path = repo[1] / "analysis" / "topic" / "other_v1"
     path.mkdir()
+    (path / "README.md").write_text("# other_v1\n\n**Id:** 9f8e7d6c\n")
     return path
 
 
@@ -282,13 +283,11 @@ def test_check_provenance(store):
     assert "obsm/X_stray" in stray.output and "1 item(s) to look at." in stray.output
 
 
-def test_task_id_is_minted_once(task):
-    first = task_id(task)
-    assert len(first) == 8 and task_id(task) == first
-    assert (task / "inputs.yaml").read_text().startswith(f'task: "{first}"\n')
-
-
-@pytest.mark.parametrize("minted", ["01234567", "12e45678", "00000010"])
-def test_a_task_id_that_looks_like_a_number_stays_a_string(task, monkeypatch, minted):
-    monkeypatch.setattr("analysis_workflow.paths.secrets.token_hex", lambda n: minted)
-    assert task_id(task) == minted and task_id(task) == minted
+def test_a_task_without_an_id_cannot_write(tmp_path, adata, task):
+    """The id is in the README's header, from `analysis-workflow new`; without one nothing is written."""
+    assert task_id(task) == "0a1b2c3d"
+    (task / "README.md").write_text("# demo_v1\n")
+    path = tmp_path / "new.zarr"
+    with pytest.raises(ValueError, match=r"no `\*\*Id:\*\*` line"), writes(path, task=task):
+        adata.write_zarr(path, consolidate_metadata=False)
+    assert task_id(task) is None and not path.exists()

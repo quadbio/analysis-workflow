@@ -1,13 +1,11 @@
 """Where an analysis task's outputs go, so that none of them dies with a git worktree."""
 
-import secrets
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-
-import yaml
 
 #: The directory under the repo root that holds notebooks and task directories.
 ANALYSIS_DIR = "analysis"
@@ -32,8 +30,8 @@ LANES = ("human", "agent")
 #: The template every task directory starts from, shipped with this package.
 TASK_TEMPLATE = Path(__file__).parent / "task_template"
 
-#: A task's id and the inputs it consumed, at the top of its directory.
-INPUTS_FILE = "inputs.yaml"
+#: The line of a task's README that holds its id, set by `analysis-workflow new`.
+ID_LINE = re.compile(r"^\*\*Id:\*\*[ \t]*([0-9a-f]+)[ \t]*$", re.MULTILINE)
 
 #: The analysis repo's starter notebook, relative to its root; the repo's template owns it.
 NOTEBOOK_TEMPLATE = Path("templates") / "notebook.ipynb"
@@ -134,12 +132,8 @@ def current_task() -> TaskPaths:
     return task_paths()
 
 
-def task_id(task: str | Path) -> str:
-    """The id in the task directory's ``inputs.yaml``; a task made before ids gets one on first use."""
-    file = Path(task) / INPUTS_FILE
-    text = file.read_text() if file.exists() else ""
-    if found := (yaml.safe_load(text) or {}).get("task"):
-        return str(found)
-    new = secrets.token_hex(4)
-    file.write_text(f'task: "{new}"\n{text}')  # quoted: YAML reads a bare 01234567 or 12e45678 as a number
-    return new
+def task_id(task: str | Path) -> str | None:
+    """The id in the header of the task directory's README; None if it has none."""
+    readme = Path(task) / "README.md"
+    found = ID_LINE.search(readme.read_text()) if readme.exists() else None
+    return found and found[1]

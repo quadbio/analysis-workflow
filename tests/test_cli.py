@@ -62,7 +62,7 @@ def test_new_task_from_the_template(repo):
     assert readme[2].startswith("**Date:** 20") and readme[3] == "**Author:** ML"
     assert (task / "scripts" / "_common.py").is_file()
     assert (task / "notebooks").is_dir() and not any((task / "notebooks").iterdir())
-    assert re.fullmatch(r'task: "[0-9a-f]{8}"', (task / "inputs.yaml").read_text().splitlines()[0])
+    assert re.fullmatch(r"\*\*Id:\*\* [0-9a-f]{8}", readme[4])
 
 
 @pytest.mark.parametrize(

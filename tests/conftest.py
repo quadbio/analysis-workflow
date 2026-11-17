@@ -35,7 +35,7 @@ def unadopted_repo(tmp_path):
 def make_repo(main, adopted=True):
     task = main / "analysis" / "topic" / "demo_v1"
     task.mkdir(parents=True)
-    (task / "README.md").write_text("# demo_v1\n")
+    (task / "README.md").write_text("# demo_v1\n\n**Id:** 0a1b2c3d\n")
     settings = {"enabledPlugins": {"analysis-workflow@quadbio": adopted}}
     (main / ".claude").mkdir()
     (main / ".claude" / "settings.json").write_text(json.dumps(settings))
