@@ -13,6 +13,7 @@ import os
 import re
 import subprocess
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -25,7 +26,7 @@ from analysis_workflow.paths import (
     UNTRACKED_TASK_DIRS,
     _checkouts_of,
 )
-from analysis_workflow.provenance import keys, records, uncovered
+from analysis_workflow.provenance import TIME, keys, records, uncovered
 
 TASK_DIR = re.compile(r".+_v\d+")
 
@@ -153,8 +154,8 @@ class _Walk:
         label = f"{rel.name}: {key}" if key else "/".join(rel.parts[-3:])
         return self.node(f"{rel}#{key}" if key else str(rel), label=label, status="source" if outside else "no record")
 
-    def made_by(self, node_id: str, task: Path) -> None:
-        """Add the inputs of ``task`` as what ``node_id`` was made from."""
+    def made_by(self, node_id: str, task: Path, when: str | None) -> None:
+        """Add the inputs of ``task`` as what ``node_id``, written at ``when``, was made from."""
         if node_id in self._expanded:
             return
         self._expanded.add(node_id)
@@ -166,23 +167,31 @@ class _Walk:
         for entry in inputs:
             rel = self.relative(entry["path"])
             for key in entry.get("keys") or [None]:
-                for source in self.artifacts(rel, key):
+                for source in self.artifacts(rel, key, before=when):
                     if source != node_id and self.trace.nodes[source].get("task") != str(task):
                         edge = {"source": source, "target": node_id, "task": str(task)}
                         if edge not in self.trace.edges:
                             self.trace.edges.append(edge)
 
-    def artifacts(self, rel: Path, key: str | None) -> list[str]:
-        """The node, or for a whole store (``*``) the nodes, that ``rel`` and ``key`` name; traced further back."""
+    def artifacts(self, rel: Path, key: str | None, before: str | None = None) -> list[str]:
+        """The node, or for a whole store (``*``) the nodes, that ``rel`` and ``key`` name; traced further back.
+
+        A whole store means its write-backs up to ``before``, when what was made from it was written: a later
+        one cannot have gone into it.
+        """
         if key is None:
             task = owner(rel)
             if task is None:
                 return [self.leaf(rel)]
             node_id = self.node(str(rel), label="/".join(rel.parts[-3:]), status="traced", task=str(task))
-            self.made_by(node_id, task)
+            file = self.on_disk(rel)  # modification times may be kept to the second only: allow for that
+            written = datetime.fromtimestamp(int(file.stat().st_mtime) + 1, UTC) if file.exists() else None
+            self.made_by(node_id, task, written and written.strftime(TIME))
             return [node_id]
         found = records(self.on_disk(rel))
-        if key != "*":
+        if key == "*":
+            found = [record for record in found if before is None or record["at"] <= before]
+        else:
             found = [record for record in found if key in record["keys"]][-1:]  # the newest that names it
         if not found:
             return [self.leaf(rel, None if key == "*" else key)]
@@ -207,7 +216,7 @@ class _Walk:
             shown = ", ".join(node["keys"][:3]) + (f" (+{len(node['keys']) - 3})" if len(node["keys"]) > 3 else "")
             node["label"] = f"{rel.name}: {shown}"
             if task:
-                self.made_by(node_id, task)
+                self.made_by(node_id, task, record["at"])
             nodes.append(node_id)
         return nodes
 

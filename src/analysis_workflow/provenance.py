@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 #: Where the records are: ``uns[KEY]`` in an AnnData store, ``attrs[KEY]`` at a SpatialData store's root.
 KEY = "provenance"
 
+#: How a record's ``at`` is written, in UTC; such strings order as their times do.
+TIME = "%Y-%m-%dT%H:%M:%S.%fZ"
+
 #: The element kinds of a SpatialData store.
 ELEMENT_KINDS = ("images", "labels", "points", "shapes", "tables")
 
@@ -156,7 +159,7 @@ def _record(path: Path, before: set[str], task: TaskPaths) -> str | None:
             "path": task.task.relative_to(checkout).as_posix(),
             "branch": branch or None,
             "keys": added,
-            "at": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "at": datetime.datetime.now(datetime.UTC).strftime(TIME),
         }
         _write(path, record)
         logger.info("Recorded %d key(s) of %s for %s.", len(added), path.name, record["path"])

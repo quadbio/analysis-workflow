@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import time
 
 import anndata as ad
 import numpy as np
@@ -145,6 +146,22 @@ def test_a_whole_store_and_a_dated_copy(project):
     declare(tasks["human_fig_v1"], [{"path": STORE, "keys": ["*"]}])
     whole = trace(main / FIGURE, start=main)
     assert sum(e["target"] == whole.target for e in whole.edges) == 2  # the build's write-back and the annotation's
+
+
+def test_a_whole_store_means_its_write_backs_up_to_then(project):
+    """What was written to the store after a file was made from it cannot have gone into the file."""
+    main, tasks = project
+    file = tasks["human_fig_v1"] / "inputs.yaml"
+    file.write_text(file.read_text().split("inputs:")[0])
+    declare(tasks["human_fig_v1"], [{"path": STORE, "keys": ["*"]}])
+
+    def write_backs_behind_the_figure(age):
+        os.utime(main / FIGURE, (time.time() - age,) * 2)
+        found = trace(main / FIGURE, start=main)
+        return sum(edge["target"] == found.target and "@" in edge["source"] for edge in found.edges)
+
+    assert write_backs_behind_the_figure(age=-60) == 2  # the figure is newer than both
+    assert write_backs_behind_the_figure(age=3600) == 0  # older than both: the store is a leaf with no record
 
 
 def test_a_key_without_a_record_and_a_task_that_is_gone(project):
