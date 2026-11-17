@@ -93,14 +93,14 @@ def commit_adata(adata: AnnData, path, *, keys: Mapping[str, Iterable[str]], yes
 
     if unknown := set(keys) - set(SLOTS):
         raise ValueError(f"Unknown slot(s) {sorted(unknown)}; keys go in {', '.join(SLOTS)}.")
-    if provenance.KEY in keys.get("uns", ()):
-        raise ValueError(f"uns[{provenance.KEY!r}] holds the store's records of who wrote what; use another name.")
     root = zarr.open_group(str(path), mode="a")
     if root.metadata.consolidated_metadata is not None:
         raise ValueError(CONSOLIDATED.format(path=path))
 
     mine, theirs = _in_memory(adata), keys_on_disk(path)
     new = {slot: sorted(set(ks)) for slot, ks in keys.items() if ks}
+    if provenance.KEY in new.get("uns", ()):
+        raise ValueError(f"uns[{provenance.KEY!r}] holds the store's records of who wrote what; use another name.")
     if missing := [f"{slot}[{k!r}]" for slot, ks in new.items() for k in ks if k not in mine[slot]]:
         raise KeyError(f"Not in adata: {', '.join(missing)}.")
     for slot, names in new.items():

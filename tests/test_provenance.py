@@ -107,6 +107,11 @@ def test_the_records_key_is_reserved(store, adata, task):
     with pytest.raises(ValueError, match="records of who wrote what"):
         commit_adata(adata, store, keys={"uns": ["provenance"]})
 
+    adata.uns["note"] = {"a": 1}  # the check must not use up keys given as an iterator
+    with writes(store, task=task):
+        assert commit_adata(adata, store, keys={"uns": iter(["note"])}, yes=True) == {"uns": ["note"]}
+    assert "uns/note" in keys(store)
+
 
 @pytest.mark.parametrize("where", ["script", "notebook"])
 def test_the_task_is_the_one_the_code_runs_in(tmp_path, task, where):
