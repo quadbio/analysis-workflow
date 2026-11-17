@@ -33,7 +33,7 @@ Given several, hand each to its own subagent, with this section as its brief.
    are named as the store's records name them. A task that consumes nothing gets `inputs: []`.
 
    ```yaml
-   task: 7f3a9c2e
+   task: "7f3a9c2e"
    inputs:
      - path: data/<dataset>/processed/working/<object>.zarr
        keys: [obs/annot_l2, obsm/X_pca, X]
