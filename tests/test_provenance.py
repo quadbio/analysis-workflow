@@ -114,9 +114,12 @@ def test_the_records_key_is_reserved(store, adata, task):
     assert "uns/note" in keys(store)
 
 
-@pytest.mark.parametrize("where", ["script", "notebook"])
+@pytest.mark.parametrize("where", ["script", "notebook", "launcher"])
 def test_the_task_is_the_one_the_code_runs_in(tmp_path, task, where):
-    """A script is credited to its own task directory; a notebook kernel to its working directory."""
+    """A script is credited to its own task directory; a notebook kernel to its working directory.
+
+    So is code run by a launcher that sits outside any checkout, such as an `ipython` console.
+    """
     path = tmp_path / "new.zarr"
     code = (
         "import sys, anndata as ad, numpy as np\n"
@@ -129,6 +132,9 @@ def test_the_task_is_the_one_the_code_runs_in(tmp_path, task, where):
     if where == "script":
         (task / "scripts" / "01_write.py").write_text(code)
         command, cwd = [sys.executable, str(task / "scripts" / "01_write.py"), str(path)], tmp_path
+    elif where == "launcher":
+        (tmp_path / "launcher.py").write_text(code)
+        command, cwd = [sys.executable, str(tmp_path / "launcher.py"), str(path)], task / "notebooks"
     else:
         command, cwd = [sys.executable, "-c", code, str(path)], task / "notebooks"
     subprocess.run(command, cwd=cwd, check=True, capture_output=True)
