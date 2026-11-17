@@ -21,10 +21,10 @@ otherwise; a later change is recorded here too. -->
 
 ## Inputs
 
-<!-- The actual files, not concepts: this is what makes the task re-runnable. -->
+<!-- The working object and label keys agreed at the start, and why these. The full list of what the code
+consumed is in `inputs.yaml`, written by the `declare-inputs` skill when the task is finished. -->
 
 - Working object: `data/<dataset>/processed/working/<object>.zarr`, and the label keys used
-- Other artifacts consumed: `analysis/<dataset>/<topic>/<other_task>/outputs/<file>`, `data/<dataset>/processed/<subdirectory>/<file>`
 
 ## Write-back
 

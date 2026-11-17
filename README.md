@@ -8,8 +8,9 @@ only. The plugin adds what only agents do: one task per session, git worktree an
 | Part | What it does |
 | --- | --- |
 | `skills/analysis-workflow/` | The agent's side: task lifecycle in a worktree, sign-off, PRs, environments, setting up repos. Loaded on demand. |
+| `skills/declare-inputs/`, `skills/trace-lineage/` | What a task consumed, written to its `inputs.yaml` from its code; and how an artifact was made, as a graph and a summary. |
 | `hooks/` | Always-on core rules and the main checkout's environment at session start; blocks worktree-unsafe output paths, `pixi install` in a worktree, shell copies into shared storage, and task directories off the template. |
-| `src/analysis_workflow/` | `task_paths`, `main_checkout`, `writes`, `commit_adata`, `keys_on_disk`, `analyze_anndata_size`; the task template; `analysis-workflow new`, `check layout` and `check provenance`. |
+| `src/analysis_workflow/` | `task_paths`, `main_checkout`, `writes`, `commit_adata`, `keys_on_disk`, `analyze_anndata_size`; the task template; `analysis-workflow new`, `trace`, and `check layout`, `provenance` and `inputs`. |
 
 It assumes analysis repos made from [analysis_template](https://github.com/quadbio/analysis_template)
 (pixi-managed) and code repos from the [scverse cookiecutter](https://github.com/scverse/cookiecutter-scverse)
