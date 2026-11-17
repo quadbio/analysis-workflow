@@ -158,6 +158,11 @@ def test_a_key_that_is_gone_fails_the_block(store, task):
         shutil.rmtree(store / "obsm" / "X_pca")
 
 
+def test_a_store_that_is_gone_fails_the_block(store, task):
+    with pytest.raises(ValueError, match="was a store before the block"), writes(store, task=task):
+        shutil.rmtree(store)
+
+
 def test_a_failing_body_keeps_its_error_and_its_record(store, adata, task):
     adata.obsm["X_new"] = np.zeros((adata.n_obs, 2))
     with pytest.raises(OSError, match="later line"), writes(store, task=task):
@@ -275,4 +280,10 @@ def test_check_provenance(store):
 def test_task_id_is_minted_once(task):
     first = task_id(task)
     assert len(first) == 8 and task_id(task) == first
-    assert (task / "inputs.yaml").read_text().startswith(f"task: {first}\n")
+    assert (task / "inputs.yaml").read_text().startswith(f'task: "{first}"\n')
+
+
+@pytest.mark.parametrize("minted", ["01234567", "12e45678", "00000010"])
+def test_a_task_id_that_looks_like_a_number_stays_a_string(task, monkeypatch, minted):
+    monkeypatch.setattr("analysis_workflow.paths.secrets.token_hex", lambda n: minted)
+    assert task_id(task) == minted and task_id(task) == minted

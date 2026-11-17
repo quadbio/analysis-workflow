@@ -137,6 +137,8 @@ def _consolidated(path) -> bool:
 def _record(path: Path, before: set[str], task: TaskPaths) -> str | None:
     """Record what appeared in the store since ``before``; return what broke a rule, if anything did."""
     if _kind(path) is None:
+        if before:
+            return f"{path} was a store before the block and is none now. Shared stores only grow."
         if path.exists():
             logger.info("%s is not an AnnData or SpatialData store: no record.", path)
         return None

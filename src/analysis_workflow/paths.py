@@ -141,5 +141,5 @@ def task_id(task: str | Path) -> str:
     if found := (yaml.safe_load(text) or {}).get("task"):
         return str(found)
     new = secrets.token_hex(4)
-    file.write_text(f"task: {new}\n{text}")
+    file.write_text(f'task: "{new}"\n{text}')  # quoted: YAML reads a bare 01234567 or 12e45678 as a number
     return new
