@@ -25,7 +25,7 @@ from analysis_workflow.paths import (
     UNTRACKED_TASK_DIRS,
     _checkouts_of,
 )
-from analysis_workflow.provenance import keys, records
+from analysis_workflow.provenance import keys, records, uncovered
 
 TASK_DIR = re.compile(r".+_v\d+")
 
@@ -187,6 +187,9 @@ class _Walk:
         if not found:
             return [self.leaf(rel, None if key == "*" else key)]
         nodes = []
+        if key == "*" and (bare := uncovered(self.on_disk(rel))):  # the whole store includes what no record covers
+            label = f"{rel.name}: {len(bare)} key(s) without a record"
+            nodes.append(self.node(f"{rel}#no record", label=label, keys=bare, status="no record"))
         for record in found:
             node_id = f"{rel}@{record['at']}"
             task = self.tasks.get(record["task"])
@@ -256,7 +259,6 @@ def changed_since_declared(task: Path) -> bool:
     code = ("scripts", "notebooks")
     if git("status", "--porcelain", "--", INPUTS_FILE):
         return False  # being written now
-    committed = int(git("log", "-1", "--format=%ct", "--", *code) or 0)
-    return committed > int(git("log", "-1", "--format=%ct", "--", INPUTS_FILE) or 0) or bool(
-        git("status", "--porcelain", "--", *code)
-    )
+    declared_in = git("log", "-1", "--format=%H", "--", INPUTS_FILE)
+    later = git("log", "--format=%H", f"{declared_in}..HEAD", "--", *code) if declared_in else ""
+    return bool(later) or bool(git("status", "--porcelain", "--", *code))

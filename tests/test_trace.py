@@ -154,6 +154,17 @@ def test_a_key_without_a_record_and_a_task_that_is_gone(project):
     stray = trace(main / STORE, "obsm/X_stray", start=main)
     assert stray.nodes[stray.target]["status"] == "no record" and stray.tasks() == []
 
+    file = tasks["human_fig_v1"] / "inputs.yaml"  # a task that used the whole store rests on that key too
+    file.write_text(file.read_text().split("inputs:")[0])
+    declare(tasks["human_fig_v1"], [{"path": STORE, "keys": ["*"]}])
+    whole = trace(main / FIGURE, start=main)
+    assert whole.nodes[f"{STORE}#no record"]["keys"] == ["obsm/X_stray"]
+    assert {
+        "source": f"{STORE}#no record",
+        "target": whole.target,
+        "task": str(tasks["human_fig_v1"].relative_to(main)),
+    } in whole.edges
+
     shutil.rmtree(tasks["agent_annot_v1"])
     gone = trace(main / STORE, "obs/annot", start=main)
     status = gone.nodes[gone.target]["status"]
@@ -193,6 +204,29 @@ def test_trace_command_formats(project, monkeypatch):
     assert CliRunner().invoke(app, ["trace", STORE, "obs/annot", "--format", "mermaid"]).output.startswith("flowchart")
     assert '"target"' in CliRunner().invoke(app, ["trace", STORE, "obs/annot", "--format", "json"]).output
     assert CliRunner().invoke(app, ["trace", FIGURE, "--format", "pdf"]).exit_code == 1
+
+
+def test_code_committed_after_the_declaration_is_noticed(project, git):
+    """By commit history, not by time: the two commits here fall within the same second."""
+    main, tasks = project
+    commit = ("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-m")
+    git("add", "-A", cwd=main)
+    git(*commit, "tasks", cwd=main)
+    build = tasks["agent_build_v1"]
+    assert not changed_since_declared(build)
+
+    (build / "scripts").mkdir()
+    (build / "scripts" / "02_more.py").write_text("x = 1\n")
+    git("add", "-A", cwd=main)
+    git(*commit, "more code", cwd=main)
+    assert changed_since_declared(build)
+
+    declare_file = build / "inputs.yaml"  # declared again, committed with or after the code
+    declare_file.write_text(declare_file.read_text() + "# again\n")
+    assert not changed_since_declared(build)
+    git("add", "-A", cwd=main)
+    git(*commit, "declared again", cwd=main)
+    assert not changed_since_declared(build)
 
 
 def test_check_inputs(project, git, monkeypatch):
