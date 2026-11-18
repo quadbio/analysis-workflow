@@ -79,8 +79,8 @@ def _is_separator(tok: str) -> bool:
     return bool(tok) and set(tok) <= set(";&|()\n")
 
 
-def pixi_calls(command: str, comments: bool = False) -> list[list[str]] | None:
-    """Argument lists of the `pixi` calls in ``command`` that change or use an environment; None if unparsable.
+def shell_calls(command: str, names: frozenset[str], comments: bool = False) -> list[tuple[str, list[str]]] | None:
+    """Name and argument list of each call in ``command`` to a program in ``names``; None if unparsable.
 
     With ``comments``, an unquoted `#` starts a comment to the end of its line, as in a script. Quotes are
     honoured either way, so quoted text (a PR body, an echoed message) is never read as a call.
@@ -97,16 +97,23 @@ def pixi_calls(command: str, comments: bool = False) -> list[list[str]] | None:
             return None
     calls = []
     for i, tok in enumerate(tokens):
-        if Path(tok).name != "pixi":
+        if Path(tok).name not in names:
             continue
         args = []
         for t in tokens[i + 1 :]:
             if _is_separator(t):
                 break
             args.append(t)
-        if next((a for a in args if a in PIXI_SUBCOMMANDS), None) in PIXI_ENV_COMMANDS:
-            calls.append(args)
+        calls.append((Path(tok).name, args))
     return calls
+
+
+def pixi_calls(command: str, comments: bool = False) -> list[list[str]] | None:
+    """Argument lists of the `pixi` calls in ``command`` that change or use an environment; None if unparsable."""
+    calls = shell_calls(command, frozenset({"pixi"}), comments)
+    if calls is None:
+        return None
+    return [args for _, args in calls if next((a for a in args if a in PIXI_SUBCOMMANDS), None) in PIXI_ENV_COMMANDS]
 
 
 #: Options of `pixi run`, `shell` and `shell-hook` that take a value (from their `--help`).

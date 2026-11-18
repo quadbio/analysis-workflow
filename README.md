@@ -8,8 +8,8 @@ only. The plugin adds what only agents do: one task per session, git worktree an
 | Part | What it does |
 | --- | --- |
 | `skills/analysis-workflow/` | The agent's side: task lifecycle in a worktree, sign-off, PRs, environments, setting up repos. Loaded on demand. |
-| `hooks/` | Always-on core rules and the main checkout's environment at session start; blocks worktree-unsafe output paths, `pixi install` in a worktree, and task directories off the template. |
-| `src/analysis_workflow/` | `task_paths`, `main_checkout`, `commit_adata`, `keys_on_disk`, `analyze_anndata_size`; the task template; `analysis-workflow new` and `check layout`. |
+| `hooks/` | Always-on core rules and the main checkout's environment at session start; guards that stop a rule being broken by accident. |
+| `src/analysis_workflow/` | The Python package and its `analysis-workflow` command: task paths, writes to shared stores and their records, layout checks; the task template. |
 
 It assumes analysis repos made from [analysis_template](https://github.com/quadbio/analysis_template)
 (pixi-managed) and code repos from the [scverse cookiecutter](https://github.com/scverse/cookiecutter-scverse)
@@ -29,7 +29,8 @@ claude --worktree <task>
    edited.
 2. It asks you which working object is current and agrees what the task delivers (by default your `deliverables`
    setting), then works in scripts; outputs go to the task directory.
-3. Results reach a shared working object only after you sign off the dry run.
+3. Results reach shared storage only after you sign off, inside a `writes` block that records in the store which
+   task wrote them.
 4. It opens a PR whose body holds the details; the task README summarizes each PR. Once it is merged and its batch
    jobs have finished, leave with `/exit` and remove the worktree.
 

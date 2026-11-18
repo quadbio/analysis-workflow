@@ -24,6 +24,12 @@ FRAME_SLOTS = ("obs", "var")
 
 SLOTS = (*FRAME_SLOTS, *MAPPING_SLOTS)
 
+#: Why a working object must not be consolidated.
+CONSOLIDATED = (
+    "{path} has consolidated metadata. Keys added to such a store are silently invisible to readers, so a working "
+    "object must not be consolidated. Rewrite it with adata.write_zarr(..., consolidate_metadata=False)."
+)
+
 
 def _in_memory(adata: AnnData) -> dict[str, set[str]]:
     keys = {"obs": set(adata.obs.columns), "var": set(adata.var.columns)}
@@ -80,19 +86,21 @@ def commit_adata(adata: AnnData, path, *, keys: Mapping[str, Iterable[str]], yes
     ValueError
         If a slot is unknown, if the store has consolidated metadata, which would make the additions
         invisible to readers, or if another session is concurrently rewriting ``obs``/``var``.
+    RuntimeError
+        With ``yes=True`` outside a ``writes`` block for the store, where the write would leave no record.
     """
+    from analysis_workflow import provenance  # it imports this module
+
     if unknown := set(keys) - set(SLOTS):
         raise ValueError(f"Unknown slot(s) {sorted(unknown)}; keys go in {', '.join(SLOTS)}.")
     root = zarr.open_group(str(path), mode="a")
     if root.metadata.consolidated_metadata is not None:
-        raise ValueError(
-            f"{path} has consolidated metadata. Keys added to such a store are silently invisible "
-            "to readers, so a working object must not be consolidated. Rewrite it with "
-            "adata.write_zarr(..., consolidate_metadata=False)."
-        )
+        raise ValueError(CONSOLIDATED.format(path=path))
 
     mine, theirs = _in_memory(adata), keys_on_disk(path)
     new = {slot: sorted(set(ks)) for slot, ks in keys.items() if ks}
+    if provenance.KEY in new.get("uns", ()):
+        raise ValueError(f"uns[{provenance.KEY!r}] holds the store's records of who wrote what; use another name.")
     if missing := [f"{slot}[{k!r}]" for slot, ks in new.items() for k in ks if k not in mine[slot]]:
         raise KeyError(f"Not in adata: {', '.join(missing)}.")
     for slot, names in new.items():
@@ -104,6 +112,11 @@ def commit_adata(adata: AnnData, path, *, keys: Mapping[str, Iterable[str]], yes
         if not yes:
             logger.info("Dry run (yes=False): %s unchanged. Re-run with yes=True to write.", path)
         return new
+    if not provenance.is_open(path):
+        raise RuntimeError(
+            f"Not inside a `writes` block for {path}. Put the write in `with writes(path):` (in a notebook, a cell "
+            "starting with `%%writes path`), so the store records which task wrote these keys."
+        )
 
     for slot, names in new.items():
         if slot in FRAME_SLOTS:

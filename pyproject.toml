@@ -16,12 +16,12 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dynamic = [ "version" ]
-dependencies = [ "anndata>=0.12", "numpy", "pandas", "scipy", "typer", "zarr>=3" ]
+dependencies = [ "anndata>=0.12", "numpy", "pandas", "pyyaml", "scipy", "typer", "zarr>=3" ]
 urls.Source = "https://github.com/quadbio/analysis-workflow"
 scripts.analysis-workflow = "analysis_workflow.cli:app"
 
 [dependency-groups]
-dev = [ "pre-commit", "pytest" ]
+dev = [ "ipython", "pre-commit", "pytest" ]
 
 [tool.hatch]
 version.path = ".claude-plugin/plugin.json"

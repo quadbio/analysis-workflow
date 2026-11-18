@@ -14,7 +14,7 @@ import scipy.sparse as sp
 import zarr
 from anndata.io import read_elem, write_elem
 
-from analysis_workflow import commit_adata, keys_on_disk
+from analysis_workflow import commit_adata, keys_on_disk, writes
 
 
 @pytest.fixture
@@ -37,17 +37,29 @@ def store(tmp_path, adata):
     return path
 
 
+@pytest.fixture
+def commit(repo):
+    """`commit_adata` with ``yes=True``, inside the `writes` block a real write needs."""
+    task = repo[0] / "analysis" / "topic" / "demo_v1"
+
+    def run(adata, path, keys):
+        with writes(path, task=task):
+            return commit_adata(adata, path, keys=keys, yes=True)
+
+    return run
+
+
 def test_dry_run_writes_nothing(store, adata):
     adata.obsm["X_new"] = np.zeros((adata.n_obs, 2))
     assert commit_adata(adata, store, keys={"obsm": ["X_new"]}) == {"obsm": ["X_new"]}
     assert "X_new" not in keys_on_disk(store)["obsm"]
 
 
-def test_adds_to_mapping_slots(store, adata):
+def test_adds_to_mapping_slots(store, adata, commit):
     adata.obsm["X_new"] = np.ones((adata.n_obs, 2))
     adata.obsp["graph"] = sp.eye(adata.n_obs, format="csr")
     adata.uns["note"] = {"hello": "world"}
-    commit_adata(adata, store, keys={"obsm": ["X_new"], "obsp": ["graph"], "uns": ["note"]}, yes=True)
+    commit(adata, store, {"obsm": ["X_new"], "obsp": ["graph"], "uns": ["note"]})
 
     back = ad.read_zarr(store)
     assert np.array_equal(back.obsm["X_new"], np.ones((adata.n_obs, 2)))
@@ -56,10 +68,10 @@ def test_adds_to_mapping_slots(store, adata):
     assert np.allclose(back.obsm["X_pca"], adata.obsm["X_pca"])  # untouched
 
 
-def test_adds_obs_and_var_columns(store, adata):
+def test_adds_obs_and_var_columns(store, adata, commit):
     adata.obs["niche_v3"] = pd.Categorical(["x", "y"] * (adata.n_obs // 2))
     adata.var["flag"] = np.arange(adata.n_vars)
-    commit_adata(adata, store, keys={"obs": ["niche_v3"], "var": ["flag"]}, yes=True)
+    commit(adata, store, {"obs": ["niche_v3"], "var": ["flag"]})
 
     back = ad.read_zarr(store)
     assert "niche_v3" in back.obs.columns
@@ -88,10 +100,10 @@ def test_recomputing_a_read_column_raises(store, adata):
         commit_adata(adata, store, keys={"obs": ["a"]})
 
 
-def test_writes_only_the_listed_keys(store, adata):
+def test_writes_only_the_listed_keys(store, adata, commit):
     adata.obsm["X_new"] = np.zeros((adata.n_obs, 2))
     adata.obsm["X_scratch"] = np.zeros((adata.n_obs, 2))
-    commit_adata(adata, store, keys={"obsm": ["X_new"]}, yes=True)
+    commit(adata, store, {"obsm": ["X_new"]})
     assert {"X_new", "X_pca"} == keys_on_disk(store)["obsm"]
 
 
@@ -105,7 +117,7 @@ def test_an_unknown_slot_raises(store, adata):
         commit_adata(adata, store, keys={"obsx": ["X_new"]})
 
 
-def test_carries_forward_a_concurrent_obs_column(store, adata):
+def test_carries_forward_a_concurrent_obs_column(store, adata, commit):
     """Rewriting obs must not drop a column another session added after we read."""
     root = zarr.open_group(str(store), mode="a")
     frame = read_elem(root["obs"])
@@ -113,20 +125,20 @@ def test_carries_forward_a_concurrent_obs_column(store, adata):
     write_elem(root, "obs", frame)
 
     adata.obs["mine"] = np.ones(adata.n_obs)
-    commit_adata(adata, store, keys={"obs": ["mine"]}, yes=True)
+    commit(adata, store, {"obs": ["mine"]})
 
     cols = ad.read_zarr(store).obs.columns
     assert "mine" in cols and "theirs" in cols
 
 
-def test_partial_read_then_commit(store, adata):
+def test_partial_read_then_commit(store, adata, commit):
     """Read one slot, add a key, write it back: the rest of the object is untouched."""
     root = zarr.open_group(str(store), mode="a")
     obs = read_elem(root["obs"])
 
     partial = ad.AnnData(obs=obs, var=pd.DataFrame(index=adata.var_names))
     partial.obsm["X_derived"] = np.zeros((len(obs), 2))
-    commit_adata(partial, store, keys={"obsm": ["X_derived"]}, yes=True)
+    commit(partial, store, {"obsm": ["X_derived"]})
 
     back = ad.read_zarr(store)
     assert "X_derived" in back.obsm

@@ -376,3 +376,46 @@ def test_session_start_without_an_installed_environment(repo, fake_pixi, tmp_pat
     session_start(worktree, CLAUDE_ENV_FILE=str(fresh), **path)
     assert not fresh.exists()
     assert "No environment is active" in session_start(worktree, **path)  # no CLAUDE_ENV_FILE
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cp -a {wt}/analysis/topic/demo_v1/outputs/x.zarr {main}/data/ds/processed/working/x.zarr",
+        "cd /tmp && rsync -a outputs/x.zarr {main}/data/ds/processed/",
+        "mv -t {main}/data/ds/processed/stores a.zarr b.zarr",
+        "rsync -r -t outputs/x.zarr {main}/data/ds/processed/x.zarr",  # to rsync, -t keeps times
+        "cp -r outputs/x.zarr data/ds/processed/working/",  # relative to the worktree
+    ],
+)
+def test_shared_writes_blocks_shell_copies_into_processed(repo, command):
+    main, worktree = repo
+    assert run("guard_shared_writes.py", bash(command.format(main=main, wt=worktree), worktree)) == 2
+
+
+def test_shared_writes_blocks_a_relative_copy_from_inside_processed(repo):
+    main, _ = repo
+    inside = main / "data" / "ds" / "processed" / "working"
+    inside.mkdir(parents=True)
+    assert run("guard_shared_writes.py", bash("cp -r /tmp/result.zarr .", inside)) == 2
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cp -a {main}/data/ds/processed/working/x.zarr {main}/analysis/topic/demo_v1/outputs/",  # out of it
+        "cp counts.h5ad {main}/data/ds/raw/",  # data from outside the repo
+        "cp markers.csv {main}/data/ds/resources/",
+        'gh pr create --body "then cp x {main}/data/ds/processed/working/"',  # quoted text
+        'cp x.zarr "$DEST/data/ds/processed/"',  # known only at run time
+        "ls {main}/data/ds/processed/",
+    ],
+)
+def test_shared_writes_allows(repo, command):
+    main, worktree = repo
+    assert run("guard_shared_writes.py", bash(command.format(main=main), worktree)) == 0
+
+
+def test_shared_writes_ignores_repos_that_have_not_adopted_the_plugin(unadopted_repo):
+    main, worktree = unadopted_repo
+    assert run("guard_shared_writes.py", bash(f"cp x.zarr {main}/data/ds/processed/", worktree)) == 0

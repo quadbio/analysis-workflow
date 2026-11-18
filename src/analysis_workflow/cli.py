@@ -1,7 +1,8 @@
-"""``analysis-workflow new``: start a task directory; ``analysis-workflow check layout``: report layout problems."""
+"""``analysis-workflow new``: start a task directory; ``analysis-workflow check ...``: report problems."""
 
 import datetime
 import re
+import secrets
 import shutil
 import subprocess
 from pathlib import Path
@@ -20,6 +21,7 @@ from analysis_workflow.paths import (
     _checkouts_of,
     main_checkout,
 )
+from analysis_workflow.provenance import records, uncovered
 
 app = typer.Typer(no_args_is_help=True)
 check = typer.Typer(no_args_is_help=True)
@@ -79,6 +81,7 @@ def new_task(path: Path, author: str, notebook: str | None = None, today: dateti
         "# ": f"# {path.name}",
         "**Date:**": f"**Date:** {today or datetime.date.today()}",
         "**Author:**": f"**Author:** {author}",
+        "**Id:**": f"**Id:** {secrets.token_hex(4)}",
     }
     lines = readme.read_text().splitlines(keepends=True)
     for start, line in fill.items():
@@ -191,3 +194,15 @@ def layout(start: Path = typer.Argument(Path("."), help="Any path inside the rep
 
     problems = len(stray) + len(orphans) + len(heavy)
     typer.echo(f"\n{problems} item(s) to look at." if problems else "\nClean.")
+
+
+@check.command("provenance")
+def provenance(store: Path = typer.Argument(..., help="An AnnData or SpatialData zarr store.")) -> None:
+    """Report the keys of a store that no record credits to a task: written outside a `writes` block."""
+    found = records(store)
+    typer.echo(f"{store}: {len(found)} record(s) from {len({r['task'] for r in found})} task(s)\n")
+    missing = uncovered(store)
+    typer.echo(f"[keys without a record]  {len(missing)} found")
+    for key in missing:
+        typer.echo(f"  {key}")
+    typer.echo(f"\n{len(missing)} item(s) to look at." if missing else "\nClean.")

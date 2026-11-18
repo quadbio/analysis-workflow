@@ -11,6 +11,13 @@ by several sessions. Additions written onto freshly re-read state commute, so co
 other's work; a removal cannot be expressed that way, hence the new dated copy. Everything else is rebuilt by a
 committed script, so it needs no write machinery.
 
+**Records of who wrote what.** A `writes` block notes in the store which task added which keys:
+`uns["provenance"]` in an AnnData store, the root attribute `provenance` in a SpatialData store. Kept there, the
+record is made by the write itself, travels with a copy of the store, and is seen by every worktree at once; a
+list kept with each task would be none of these. A file of another format has nowhere to keep such a record, so
+under `data/` it is untraced. How the block works, and what it does to a copy's records: the `provenance`
+module's docstring.
+
 **SpatialData stores.** Images, labels, points and shapes usually exist once: add an element under a new name
 rather than replacing one. When a table lives in both a store and a working object, the repo's `AGENTS.md` says
 which one is the source.

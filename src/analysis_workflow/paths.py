@@ -1,6 +1,8 @@
 """Where an analysis task's outputs go, so that none of them dies with a git worktree."""
 
+import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -27,6 +29,9 @@ LANES = ("human", "agent")
 
 #: The template every task directory starts from, shipped with this package.
 TASK_TEMPLATE = Path(__file__).parent / "task_template"
+
+#: The line of a task's README that holds its id, set by `analysis-workflow new`.
+ID_LINE = re.compile(r"^\*\*Id:\*\*[ \t]*([0-9a-f]+)[ \t]*$", re.MULTILINE)
 
 #: The analysis repo's starter notebook, relative to its root; the repo's template owns it.
 NOTEBOOK_TEMPLATE = Path("templates") / "notebook.ipynb"
@@ -114,3 +119,21 @@ def task_paths(file: str | Path | None = None) -> TaskPaths:
         outputs=main_task / "outputs",
         logs=main_task / "logs",
     )
+
+
+def current_task() -> TaskPaths:
+    """The task the running code belongs to: the script being run, or in a notebook the working directory."""
+    script = getattr(sys.modules.get("__main__"), "__file__", None)
+    if script is not None:
+        try:
+            return task_paths(script)
+        except (ValueError, RuntimeError):  # run by a launcher outside `analysis/`, or outside any checkout
+            pass
+    return task_paths()
+
+
+def task_id(task: str | Path) -> str | None:
+    """The id in the header of the task directory's README; None if it has none."""
+    readme = Path(task) / "README.md"
+    found = ID_LINE.search(readme.read_text()) if readme.exists() else None
+    return found and found[1]

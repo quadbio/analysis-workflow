@@ -8,7 +8,9 @@ analysis code, outputs or data. Always:
 2. Every output path comes from `task_paths(__file__)` (package `analysis_workflow`); never a bare relative path.
 3. Ask the human which working object (and which label keys) is current, never inferring it from a script or the
    newest file name; and agree what the task delivers (a default, if set, is listed below), recorded in its README.
-4. Shared objects grow by addition only (`commit_adata`), and only after sign-off on the dry run.
+4. Shared objects grow by addition only, and every write to shared storage sits in a `writes` block, which records
+   in the store which task wrote what. Such a write needs the human's sign-off first (for `commit_adata`, on its
+   dry run) and never runs from a batch job.
 5. A worktree, and every batch job submitted from it, runs on the main checkout's environment; only the human
    installs it, in the main checkout. The line below says whether it is active in every Bash command. Batch jobs
    run `pixi run --manifest-path "$MAIN/pixi.toml" --as-is ...`.

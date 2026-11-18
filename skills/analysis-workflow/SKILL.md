@@ -66,10 +66,10 @@ repo, a short summary.
 **Finish**
 1. The agreed deliverables, and the README brought up to date, its jobs counted with the compute environment's
    tools.
-2. Write back: dry run, sign-off on that diff, then `yes=True`.
-3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off. Ask which subdirectory;
-   record the path.
-4. `analysis-workflow check layout`, then push.
+2. Write back: dry run, sign-off on that diff, then `yes=True` inside `with writes(<store>):`.
+3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off, written or copied
+   there inside a `writes` block. Ask which subdirectory; record the path.
+4. `analysis-workflow check layout`, and `check provenance <store>` for each store written to; then push.
 5. Open the PR, its body from the PR template; then add it with a short summary to the README and push again. The
    body is edited until the merge, never after.
 6. The worktree is removed only once no batch job submitted from it is still queued or running.
