@@ -4,10 +4,12 @@
 code runs in. The record lives with the data: in an AnnData store as one child of ``uns/provenance`` per block, in a
 SpatialData store as one entry of the root attribute ``provenance``; readers see it as ``adata.uns["provenance"]``
 and ``sdata.attrs["provenance"]``. A copy of a store carries its records, and a block credits only keys that none
-of them covers, so copying an object keeps each key with the task that made it.
+of them covers, so copying an object keeps each key with the task that made it. The block that writes a copy
+drops from those records the keys the copy did not keep.
 
-The stores are read as zarr groups, in format 2 or 3, so SpatialData is not imported. Under ``uns/provenance`` only
-children are ever added: rewriting that group's metadata would replace the file another node is reading.
+The stores are read as zarr groups, in format 2 or 3, so SpatialData is not imported. In an existing store only
+children are ever added under ``uns/provenance``: rewriting that group's metadata would replace the file another
+node is reading.
 """
 
 import datetime
@@ -83,16 +85,39 @@ def keys(path) -> set[str]:
     return found
 
 
+def _named(path) -> dict[str, dict]:
+    """The store's records, by the name each is kept under."""
+    kind = _kind(path)
+    if kind == "spatialdata":
+        return dict(_root(path).attrs.get(KEY, {}))
+    root = _root(path) if kind == "anndata" else {}
+    if "uns" in root and KEY in root["uns"]:
+        return {name: json.loads(read_elem(root["uns"][KEY][name])) for name in root["uns"][KEY]}
+    return {}
+
+
 def records(path) -> list[dict]:
     """The records in the store at ``path``, oldest first: ``{"task", "path", "branch", "keys", "at"}`` each."""
-    kind, found = _kind(path), []
-    if kind == "spatialdata":
-        found = list(dict(_root(path).attrs.get(KEY, {})).values())
-    elif kind == "anndata":
-        root = _root(path)
-        if "uns" in root and KEY in root["uns"]:
-            found = [json.loads(read_elem(root["uns"][KEY][name])) for name in root["uns"][KEY]]
-    return sorted(found, key=lambda record: record["at"])
+    return sorted(_named(path).values(), key=lambda record: record["at"])
+
+
+def _prune(path, present: set[str]) -> None:
+    """In a new copy, drop from the records it carries the keys it did not keep, and the records left with none."""
+    named = _named(path)
+    kept = {name: {**record, "keys": [k for k in record["keys"] if k in present]} for name, record in named.items()}
+    if kept == named:
+        return
+    root = _root(path, mode="a")
+    if _kind(path) == "spatialdata":
+        root.attrs[KEY] = {name: record for name, record in kept.items() if record["keys"]}
+        zarr.consolidate_metadata(str(path))
+        return
+    group = root["uns"][KEY]
+    for name, record in kept.items():
+        if not record["keys"]:
+            del group[name]
+        elif record != named[name]:
+            write_elem(group, name, json.dumps(record))
 
 
 def uncovered(path) -> list[str]:
@@ -145,6 +170,8 @@ def _record(path: Path, before: set[str], task: TaskPaths, identity: str) -> str
     if _consolidated(path):
         return CONSOLIDATED.format(path=path)
     after = keys(path)
+    if not before:  # a store this block created: if it is a copy, its records name what the original held
+        _prune(path, after)
     covered = {k for record in records(path) for k in record["keys"]}
     if added := sorted(after - before - covered):
         checkout, _ = _checkouts_of(task.task)
