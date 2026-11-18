@@ -36,3 +36,14 @@ beside their other repos). Then:
    `.github/pull_request_template.md`.
 6. In `AGENTS.md`, one short section naming the plugin and where the working objects live; delete restated rules.
 7. `uvx cruft link https://github.com/quadbio/analysis_template`, so the repo receives the template's updates.
+
+Task directories and shared stores that predate the conventions are then made traceable. This edits earlier task
+directories and writes to shared storage, so the human approves it first and the PR notes it as an exception:
+
+1. Each task README gets the template's header lines: `**Author:**`, and `**Id:**` with a new
+   `secrets.token_hex(4)`.
+2. The `declare-inputs` skill on each task.
+3. For each store, work out from the code and the READMEs which task wrote which keys, and when. After the human's
+   sign-off on the dry run, `credit(store, keys, task=<its directory>, at=<when>, yes=True)` once per task and
+   store, until `analysis-workflow check provenance <store>` is clean. An AnnData store with consolidated
+   metadata is rewritten first (`write_zarr(..., consolidate_metadata=False)`).

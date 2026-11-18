@@ -7,6 +7,9 @@ and ``sdata.attrs["provenance"]``. A copy of a store carries its records, and a 
 of them covers, so copying an object keeps each key with the task that made it. The block that writes a copy
 drops from those records the keys the copy did not keep.
 
+A store older than its records gets them from `credit`, which adds the record a block would have written for keys
+that are already there.
+
 The stores are read as zarr groups, in format 2 or 3, so SpatialData is not imported. In an existing store only
 children are ever added under ``uns/provenance``: rewriting that group's metadata would replace the file another
 node is reading.
@@ -100,7 +103,10 @@ def _named(path) -> dict[str, dict]:
 
 
 def records(path) -> list[dict]:
-    """The records in the store at ``path``, oldest first: ``{"task", "path", "branch", "keys", "at"}`` each."""
+    """The records in the store at ``path``, oldest first: ``{"task", "path", "branch", "keys", "at"}`` each.
+
+    One added by `credit` also holds ``recorded``, when it was added.
+    """
     return sorted(_named(path).values(), key=lambda record: record["at"])
 
 
@@ -236,6 +242,72 @@ def writes(path, *, task: TaskPaths | str | Path | None = None):
         problem = _record(path, before, credited, identity)
     if problem:
         raise ValueError(problem)
+
+
+def credit(path, keys, *, task: TaskPaths | str | Path, at: datetime.datetime, yes: bool = False) -> list[str]:
+    """Credit ``keys`` that are already in the store at ``path`` to the task that wrote them.
+
+    For a store older than its records, in a repo that adopts these conventions: a `writes` block records only
+    what appears while it is open. Dry run by default: with ``yes=False`` the record is logged and nothing is
+    written.
+
+    Parameters
+    ----------
+    keys
+        The keys to credit, named as the store's records name them: ``obs/leiden``, ``X``, ``shapes/cells``.
+    task
+        The directory of the task that wrote them.
+    at
+        When it wrote them; without a time zone, in UTC. A trace of a whole store follows only the records
+        older than what was made from it.
+
+    Returns
+    -------
+    The keys credited (or that would be credited).
+
+    Raises
+    ------
+    KeyError
+        If a key is not in the store, or a record already covers it.
+    ValueError
+        If the task's README has no id, ``at`` is in the future, the store already holds a record of this task
+        at ``at``, ``path`` is no store, or it is an AnnData store with consolidated metadata.
+    """
+    path, credited, wanted = Path(path).resolve(), _task(task), sorted(set(keys))
+    if (identity := task_id(credited.task)) is None:
+        raise ValueError(f"{credited.task / 'README.md'} has no `**Id:**` line to record the keys under.")
+    if _kind(path) is None:
+        raise ValueError(f"{path} is not an AnnData or SpatialData store: it can hold no record.")
+    if _consolidated(path):
+        raise ValueError(CONSOLIDATED.format(path=path))
+    at = at.replace(tzinfo=datetime.UTC) if at.tzinfo is None else at.astimezone(datetime.UTC)
+    now = datetime.datetime.now(datetime.UTC)
+    if at > now:
+        raise ValueError(f"{at.isoformat()} is in the future: `at` is when the task wrote the keys.")
+    found, bare = records(path), set(uncovered(path))
+    if covered := sorted({k for record in found for k in record["keys"]} & set(wanted)):
+        raise KeyError(f"A record of {path} already covers: {', '.join(covered)}.")
+    if absent := [k for k in wanted if k not in bare]:
+        raise KeyError(f"Not in {path}: {', '.join(absent)}.")
+    checkout, _ = _checkouts_of(credited.task)
+    record = {
+        "task": identity,
+        "path": credited.task.relative_to(checkout).as_posix(),
+        "branch": None,
+        "keys": wanted,
+        "at": at.strftime(TIME),
+        "recorded": now.strftime(TIME),
+    }
+    if any((r["task"], r["at"]) == (record["task"], record["at"]) for r in found):
+        raise ValueError(f"{path} already holds a record of {record['path']} at {record['at']}.")
+    listed = "\n".join(f"  {k}" for k in wanted) or "  nothing to credit"
+    logger.info("Crediting to %s, as written %s, in %s:\n%s", record["path"], record["at"], path, listed)
+    if not yes or not wanted:
+        if not yes:
+            logger.info("Dry run (yes=False): %s unchanged. Re-run with yes=True to write.", path)
+        return wanted
+    _write(path, record)
+    return wanted
 
 
 def is_open(path) -> bool:
