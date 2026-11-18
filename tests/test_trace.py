@@ -1,5 +1,6 @@
 """Tracing an artifact back through store records and declared inputs."""
 
+import datetime
 import os
 import shutil
 import time
@@ -11,7 +12,7 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from analysis_workflow import commit_adata, writes
+from analysis_workflow import commit_adata, credit, writes
 from analysis_workflow.cli import app
 from analysis_workflow.trace import changed_since_declared, declared, missing_inputs, trace
 
@@ -156,6 +157,24 @@ def test_a_whole_store_means_its_write_backs_up_to_then(project):
 
     assert write_backs_behind_the_figure(age=-60) == 2  # the figure is newer than both
     assert write_backs_behind_the_figure(age=3600) == 0  # older than both: the store is a leaf with no record
+
+
+def test_a_credited_key_is_traced_at_the_time_it_was_written(project):
+    """A store older than its records: `credit` gives a key its task, and its time decides what a whole store held."""
+    main, tasks = project
+    old = "data/ds/processed/working/old.zarr"
+    ad.AnnData(np.ones((3, 2), dtype="float32")).write_zarr(main / old, consolidate_metadata=False)  # outside a block
+    bare = trace(main / old, "X", start=main)
+    assert bare.nodes[bare.target]["status"] == "no record"
+
+    two_days_ago = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=2)
+    credit(main / old, ["X"], task=tasks["agent_build_v1"], at=two_days_ago, yes=True)
+    found = trace(main / old, "X", start=main)
+    assert names(found) == ["agent_build_v1"] and found.nodes[RAW]["status"] == "source"
+
+    declare(tasks["human_fig_v1"], [{"path": old, "keys": ["*"]}])
+    os.utime(main / FIGURE, (time.time() - 86400,) * 2)  # made a day ago: after the credited write, before now
+    assert "agent_build_v1" in names(trace(main / FIGURE, start=main))
 
 
 def test_a_key_without_a_record_and_a_task_that_is_gone(project):

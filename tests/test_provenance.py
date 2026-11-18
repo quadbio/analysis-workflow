@@ -5,6 +5,7 @@ Some of these pin behaviour of anndata, zarr and SpatialData that the records re
 consolidated metadata.
 """
 
+import datetime
 import json
 import shutil
 import subprocess
@@ -17,7 +18,7 @@ import pytest
 import zarr
 from typer.testing import CliRunner
 
-from analysis_workflow import commit_adata, writes
+from analysis_workflow import commit_adata, credit, writes
 from analysis_workflow.cli import app
 from analysis_workflow.paths import task_id
 from analysis_workflow.provenance import keys, records, uncovered
@@ -310,6 +311,61 @@ def test_check_provenance(store):
     ad.io.write_elem(root["obsm"], "X_stray", np.zeros((20, 2)))  # written outside a block
     stray = CliRunner().invoke(app, ["check", "provenance", str(store)])
     assert "obsm/X_stray" in stray.output and "1 item(s) to look at." in stray.output
+
+
+def test_credit_records_keys_older_than_the_records(tmp_path, adata, task, other):
+    """A store written before records were kept: each key goes to its task, at the time it was written."""
+    path = tmp_path / "old.zarr"
+    adata.write_zarr(path, consolidate_metadata=False)  # outside a block
+    assert records(path) == [] and uncovered(path) == ["X", "obs/a", "obsm/X_pca"]
+    then = datetime.datetime(2026, 1, 27, 12, tzinfo=datetime.UTC)
+
+    assert credit(path, ["X", "obs/a"], task=task, at=then) == ["X", "obs/a"]  # a dry run
+    assert records(path) == []
+
+    credit(path, ["X", "obs/a"], task=task, at=then, yes=True)
+    credit(path, ["obsm/X_pca"], task=other, at=then + datetime.timedelta(days=1), yes=True)
+    first, second = records(path)
+    assert (first["path"], first["keys"]) == ("analysis/topic/demo_v1", ["X", "obs/a"])
+    assert first["at"] == "2026-01-27T12:00:00.000000Z" < first["recorded"] and first["branch"] is None
+    assert second["path"] == "analysis/topic/other_v1" and uncovered(path) == []
+    assert len(ad.read_zarr(path).uns["provenance"]) == 2
+
+    adata.obsm["X_new"] = np.zeros((20, 2))
+    with writes(path, task=other):  # a later block records only what it adds
+        commit_adata(adata, path, keys={"obsm": ["X_new"]}, yes=True)
+    assert records(path)[-1]["keys"] == ["obsm/X_new"]
+
+
+def test_credit_refuses_what_it_cannot_record(tmp_path, adata, task, other, store):
+    then = datetime.datetime(2026, 1, 27)
+    with pytest.raises(KeyError, match="already covers: X"):
+        credit(store, ["X"], task=task, at=then, yes=True)
+
+    old = tmp_path / "old.zarr"
+    adata.write_zarr(old, consolidate_metadata=False)
+    with pytest.raises(KeyError, match="Not in .*: obs/absent"):
+        credit(old, ["obs/absent"], task=task, at=then, yes=True)
+    with pytest.raises(ValueError, match="in the future"):
+        credit(old, ["X"], task=task, at=datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=1))
+    credit(old, ["X"], task=task, at=then, yes=True)
+    with pytest.raises(ValueError, match="already holds a record"):  # a trace tells a store's records apart by time
+        credit(old, ["obs/a"], task=other, at=then, yes=True)
+    assert [r["keys"] for r in records(old)] == [["X"]]
+
+    consolidated = tmp_path / "cons.zarr"
+    adata.write_zarr(consolidated, consolidate_metadata=True)
+    with pytest.raises(ValueError, match="consolidated metadata"):
+        credit(consolidated, ["X"], task=task, at=then, yes=True)
+    with pytest.raises(ValueError, match="not an AnnData or SpatialData store"):
+        credit(tmp_path / "registry.csv", ["X"], task=task, at=then, yes=True)
+
+
+def test_credit_in_a_spatialdata_store(tmp_path, adata, task):
+    path = tmp_path / "section.zarr"
+    spatial_store(path, adata)
+    credit(path, uncovered(path), task=task, at=datetime.datetime(2026, 1, 27), yes=True)
+    assert uncovered(path) == [] and len(zarr.open_group(str(path), mode="r").attrs["provenance"]) == 1
 
 
 def test_a_task_without_an_id_cannot_write(tmp_path, adata, task):

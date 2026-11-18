@@ -36,3 +36,6 @@ beside their other repos). Then:
    `.github/pull_request_template.md`.
 6. In `AGENTS.md`, one short section naming the plugin and where the working objects live; delete restated rules.
 7. `uvx cruft link https://github.com/quadbio/analysis_template`, so the repo receives the template's updates.
+8. The shared stores the repo already holds have no record of who wrote their keys, so a trace ends at them. Where
+   the code shows which task wrote which keys, and when, `credit` records it, after the human's sign-off on its
+   dry run.
