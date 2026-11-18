@@ -140,3 +140,11 @@ def task_id(task: str | Path) -> str | None:
     readme = Path(task) / "README.md"
     found = ID_LINE.search(readme.read_text()) if readme.exists() else None
     return found and found[1]
+
+
+def task_field(task: str | Path, field: str) -> str | None:
+    """What the header of the task directory's README says under ``field``, ``Author`` or ``Date``; None if absent."""
+    readme = Path(task) / "README.md"
+    line = re.compile(rf"^\*\*{re.escape(field)}:\*\*[ \t]*(.+?)[ \t]*$", re.MULTILINE)
+    found = line.search(readme.read_text()) if readme.exists() else None
+    return found and found[1]

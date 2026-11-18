@@ -101,17 +101,6 @@ class Trace:
         walk(self.target, 0)
         return "\n".join(lines)
 
-    def as_mermaid(self) -> str:
-        """A flowchart: artifacts as nodes, each edge labelled with the task that made its target."""
-        names = {node_id: f"n{i}" for i, node_id in enumerate(self.nodes)}
-        lines = ["flowchart LR"]
-        for node_id, node in self.nodes.items():
-            note = "" if node["status"] == "traced" else f"<br/>({node['status']})"
-            lines.append(f'  {names[node_id]}["{node["label"]}{note}"]')
-        for edge in self.edges:
-            lines.append(f"  {names[edge['source']]} -->|{Path(edge['task']).name}| {names[edge['target']]}")
-        return "\n".join(lines)
-
 
 class _Walk:
     def __init__(self, start: Path):
