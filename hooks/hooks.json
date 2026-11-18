@@ -1,5 +1,5 @@
 {
-  "description": "analysis-workflow, in repos that enable it: always-on core rules, plus guards against worktree-unsafe output paths, pixi installs, shell copies into shared storage and task directories off the template.",
+  "description": "analysis-workflow, in repos that enable it: always-on core rules, plus guards that stop a rule being broken by accident.",
   "hooks": {
     "SessionStart": [
       {

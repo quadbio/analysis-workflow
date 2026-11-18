@@ -163,6 +163,23 @@ def test_a_copy_keeps_each_key_with_its_writer(tmp_path, store, other):
     assert old["path"] == "analysis/topic/demo_v1" and new["path"] == "analysis/topic/other_v1"
     assert new["keys"] == ["obs/fixed"]
     assert uncovered(dated) == []
+    assert old["keys"] == ["X", "obs/a"]  # the copy's records name only what the copy kept
+
+
+def test_a_copy_drops_the_records_of_keys_it_dropped(tmp_path, store, adata, task, other):
+    adata.obsm["X_extra"] = np.zeros((adata.n_obs, 2))
+    with writes(store, task=other):
+        commit_adata(adata, store, keys={"obsm": ["X_extra"]}, yes=True)
+    assert len(records(store)) == 2
+
+    copy = tmp_path / "dated.zarr"
+    kept = ad.read_zarr(store)
+    del kept.obsm["X_extra"]
+    with writes(copy, task=task):
+        kept.write_zarr(copy, consolidate_metadata=False)
+    assert [r["path"] for r in records(copy)] == ["analysis/topic/demo_v1"]
+    assert len(ad.read_zarr(copy).uns["provenance"]) == 1
+    assert len(records(store)) == 2  # the original is untouched
 
 
 def test_a_key_that_is_gone_fails_the_block(store, task):
@@ -228,6 +245,12 @@ def test_spatialdata_layout(tmp_path, adata, task, other):
     through_consolidated = zarr.open_group(str(path), mode="r")
     assert through_consolidated.metadata.consolidated_metadata is not None
     assert len(through_consolidated.attrs["provenance"]) == 2
+
+    copy = tmp_path / "copy.zarr"  # a copy without the second task's element drops that task's record
+    with writes(copy, task=task):
+        shutil.copytree(path, copy)
+        shutil.rmtree(copy / "shapes" / "nuclei")
+    assert [r["path"] for r in records(copy)] == ["analysis/topic/demo_v1"]
 
 
 def test_spatialdata_reads_and_carries_the_records(tmp_path, adata, task, other):
