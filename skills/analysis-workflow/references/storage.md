@@ -15,8 +15,8 @@ committed script, so it needs no write machinery.
 `uns["provenance"]` in an AnnData store, the root attribute `provenance` in a SpatialData store. Kept there, the
 record is made by the write itself, travels with a copy of the store, and is seen by every worktree at once; a
 list kept with each task would be none of these. A file of another format has nowhere to keep such a record, so
-it is not promoted: in the task's own directory, its location names the task. How the block works, and what it
-does to a copy's records: the `provenance` module's docstring.
+it stays with the task that made it, where its location names the task. How the block works, and what it does to
+a copy's records: the `provenance` module's docstring.
 
 **SpatialData stores.** Images, labels, points and shapes usually exist once: add an element under a new name
 rather than replacing one. When a table lives in both a store and a working object, the repo's `AGENTS.md` says

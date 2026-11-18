@@ -68,8 +68,7 @@ repo, a short summary.
    tools.
 2. Write back: dry run, sign-off on that diff, then `yes=True` inside `with writes(<store>):`.
 3. An AnnData or SpatialData store other tasks will load is promoted to `data/<dataset>/processed/` at sign-off,
-   written or copied there inside a `writes` block. Ask which subdirectory; record the path. Any other file they
-   will load stays in the task's `outputs/` or `results/`, where its location says which task made it.
+   written or copied there inside a `writes` block. Ask which subdirectory; record the path.
 4. `analysis-workflow check layout`, and `check provenance <store>` for each store written to; then push.
 5. Open the PR, its body from the PR template; then add it with a short summary to the README and push again. The
    body is edited until the merge, never after.
