@@ -92,6 +92,16 @@ def test_new_task_counts_versions_in_the_main_checkout(repo):
     assert new("analysis/ds/topic/agent_markers_v2", "--author", "x", cwd=worktree).exit_code == 0
 
 
+def test_new_task_author_defaults_to_the_git_user_for_a_human_only(repo, git):
+    main, worktree = repo
+    git("config", "user.name", "Ada Lovelace", cwd=main)
+    assert new("analysis/ds/topic/human_markers_v1", cwd=main).exit_code == 0
+    readme = main / "analysis" / "ds" / "topic" / "human_markers_v1" / "README.md"
+    assert "**Author:** Ada Lovelace\n" in readme.read_text()
+    result = new("analysis/ds/topic/agent_markers_v2", cwd=worktree)
+    assert result.exit_code == 1 and "--author" in result.output
+
+
 def test_new_task_needs_a_dataset_and_topic(repo):
     main, _ = repo
     assert "not of the form" in new("analysis/human_markers_v1", "--author", "ML", cwd=main).output
