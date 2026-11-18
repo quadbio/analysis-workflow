@@ -40,12 +40,15 @@ def _version(directory: str, name: str) -> int | None:
     return None
 
 
-def new_task(path: Path, author: str, notebook: str | None = None, today: datetime.date | None = None) -> Path:
+def new_task(
+    path: Path, author: str | None = None, notebook: str | None = None, today: datetime.date | None = None
+) -> Path:
     """Create the task directory ``path`` from the task template; return it.
 
     ``path`` is ``analysis/<dataset>/<topic>/.../<lane>_<name>_vN``, relative to the working directory or absolute,
     and ``vN`` must be the next version of ``<name>`` beside it, counted over both lanes, in this checkout and the
-    main one. ``notebook`` (``NN_<step>``) copies the repo's starter notebook into ``notebooks/``.
+    main one. ``author`` defaults, for a human's task, to the git user name; an agent's task names its model.
+    ``notebook`` (``NN_<step>``) copies the repo's starter notebook into ``notebooks/``.
     """
     path = Path(path).resolve()
     checkout, main = _checkouts_of(path)
@@ -57,6 +60,12 @@ def new_task(path: Path, author: str, notebook: str | None = None, today: dateti
         raise ValueError(f"{path.name!r} is not a task name: {form}.")
     if path.exists():
         raise FileExistsError(f"{path} already exists.")
+    if author is None and m["lane"] == "human":
+        author = subprocess.run(
+            ["git", "-C", str(checkout), "config", "user.name"], capture_output=True, text=True
+        ).stdout.strip()
+    if not author:
+        raise ValueError("Pass --author: the model for an agent's task, or a name where git has no `user.name`.")
     parent = path.parent.relative_to(checkout)
     found = [
         v
@@ -95,7 +104,9 @@ def new_task(path: Path, author: str, notebook: str | None = None, today: dateti
 @app.command("new")
 def new(
     path: Path = typer.Argument(..., help="analysis/<dataset>/<topic>/<human|agent>_<name>_v<N>"),
-    author: str = typer.Option(..., help="A human's initials, or the model, e.g. 'Claude Opus 5.5'."),
+    author: str | None = typer.Option(
+        None, help="A human's name or initials (default: the git user name), or the model, e.g. 'Claude Opus 5.5'."
+    ),
     notebook: str | None = typer.Option(None, help="Also copy the repo's starter notebook in, as NN_<step>."),
 ) -> None:
     """Start a task directory from the task template."""
