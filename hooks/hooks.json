@@ -1,5 +1,5 @@
 {
-  "description": "analysis-workflow, in repos that enable it: always-on core rules, plus guards that stop a rule being broken by accident.",
+  "description": "analysis-workflow, in repos that enable it: always-on core rules, plus guards that stop a rule being broken by accident and that only the human lifts.",
   "hooks": {
     "SessionStart": [
       {
@@ -8,6 +8,17 @@
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py\"",
             "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptExpansion": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/allow_exception.py\"",
+            "timeout": 10
           }
         ]
       }

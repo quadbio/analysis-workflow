@@ -11,9 +11,12 @@ import pytest
 HOOKS = Path(__file__).parents[1] / "hooks"
 
 
+def result(hook: str, payload: dict) -> subprocess.CompletedProcess:
+    return subprocess.run([sys.executable, HOOKS / hook], input=json.dumps(payload), capture_output=True, text=True)
+
+
 def run(hook: str, payload: dict) -> int:
-    proc = subprocess.run([sys.executable, HOOKS / hook], input=json.dumps(payload), capture_output=True, text=True)
-    return proc.returncode
+    return result(hook, payload).returncode
 
 
 def write(path: Path, content: str) -> dict:
@@ -290,8 +293,8 @@ def test_guards_ignore_repos_that_have_not_adopted_the_plugin(unadopted_repo):
     assert run("guard_worktree_pixi.py", bash("pixi install", worktree)) == 0
 
 
-def session_start(cwd: Path, **env: str) -> str:
-    payload = json.dumps({"hook_event_name": "SessionStart", "cwd": str(cwd)})
+def session_start(cwd: Path, session_id: str = "", **env: str) -> str:
+    payload = json.dumps({"hook_event_name": "SessionStart", "cwd": str(cwd), "session_id": session_id})
     environ = {k: v for k, v in os.environ.items() if k != "CLAUDE_ENV_FILE"} | env
     return subprocess.run(
         [sys.executable, HOOKS / "session_start.py"],
@@ -421,3 +424,81 @@ def test_shared_writes_allows(repo, command):
 def test_shared_writes_ignores_repos_that_have_not_adopted_the_plugin(unadopted_repo):
     main, worktree = unadopted_repo
     assert run("guard_shared_writes.py", bash(f"cp x.zarr {main}/data/ds/processed/", worktree)) == 0
+
+
+@pytest.fixture
+def plugin_data(tmp_path, monkeypatch):
+    """The plugin's data directory, where the guards lifted for a session are recorded."""
+    monkeypatch.setenv("CLAUDE_PLUGIN_DATA", str(tmp_path / "plugin-data"))
+    return tmp_path / "plugin-data"
+
+
+@pytest.fixture
+def refused(repo, pixi_worktree):
+    """For each guard, by the name the human types: its hook and a call it refuses."""
+    main, worktree = repo
+    return {
+        "layout": ("guard_task_layout.py", write(worktree / "analysis" / "topic" / "demo_v1" / "HANDOFF.md", "x")),
+        "paths": ("guard_task_paths.py", write(worktree / "analysis" / "t_v1" / "run.py", 'OUT = "/tmp/run1"')),
+        "pixi": ("guard_worktree_pixi.py", bash("pixi install", worktree)),
+        "shared-writes": ("guard_shared_writes.py", bash(f"cp x.zarr {main}/data/ds/processed/", worktree)),
+    }
+
+
+def allow(guard: str, cwd: Path, command: str = "analysis-workflow:allow") -> subprocess.CompletedProcess:
+    """The human types `/<command> <guard>` in session `s1`."""
+    payload = {"hook_event_name": "UserPromptExpansion", "command_name": command, "command_args": guard}
+    return result("allow_exception.py", payload | {"cwd": str(cwd), "session_id": "s1"})
+
+
+@pytest.mark.parametrize("guard", ["layout", "paths", "pixi", "shared-writes"])
+def test_a_guard_is_lifted_only_by_name_and_only_for_the_session(repo, refused, plugin_data, guard):
+    _, worktree = repo
+    hook, call = refused[guard]
+    blocked = result(hook, call | {"session_id": "s1"})
+    assert blocked.returncode == 2
+    assert f"`/analysis-workflow:allow {guard}`" in blocked.stderr
+
+    allow(next(name for name in refused if name != guard), worktree)
+    assert run(hook, call | {"session_id": "s1"}) == 2  # another guard was lifted
+
+    assert f"`{guard}` guard" in allow(guard, worktree).stdout
+    assert run(hook, call | {"session_id": "s1"}) == 0
+    assert run(hook, call | {"session_id": "s2"}) == 2  # another session
+    assert run(hook, call) == 2
+
+
+def test_layout_at_stop_is_lifted_with_the_guard(repo, plugin_data):
+    _, worktree = repo
+    (worktree / "analysis" / "topic" / "demo_v1" / "HANDOFF.md").write_text("x")
+    at_stop = {"hook_event_name": "Stop", "cwd": str(worktree), "session_id": "s1"}
+    assert run("guard_task_layout.py", at_stop) == 2
+    allow("layout", worktree)
+    assert run("guard_task_layout.py", at_stop) == 0
+
+
+def test_allow_takes_a_known_guard_from_its_own_command_in_an_adopted_repo(repo, unadopted_repo, refused, plugin_data):
+    _, worktree = repo
+    reason = f"analysis-workflow: no guard named `nonsense`; one of {', '.join(refused)}."
+    assert json.loads(allow("nonsense", worktree).stdout) == {"decision": "block", "reason": reason}
+    assert allow("1m /analysis-workflow:allow layout", worktree, command="loop").stdout == ""
+    assert allow("layout", unadopted_repo[1]).stdout == ""
+    assert not plugin_data.exists()
+
+    for guard in ("layout", "pixi", "layout"):
+        allow(guard, worktree)
+    assert (plugin_data / "exceptions" / "s1").read_text() == "layout\npixi\n"
+
+
+def test_allow_refuses_when_it_cannot_record_the_guard(repo, monkeypatch):
+    monkeypatch.delenv("CLAUDE_PLUGIN_DATA", raising=False)
+    assert json.loads(allow("layout", repo[1]).stdout)["decision"] == "block"
+
+
+def test_session_start_lists_the_guards_lifted_for_the_session(repo, plugin_data):
+    _, worktree = repo
+    line = "Lifted by the human for this session: the guard(s) layout."
+    assert line not in session_start(worktree, session_id="s1")
+    allow("layout", worktree)
+    assert line in session_start(worktree, session_id="s1")
+    assert line not in session_start(worktree, session_id="s2")

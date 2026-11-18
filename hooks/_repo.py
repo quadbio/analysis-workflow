@@ -8,11 +8,36 @@ Standard library only: it runs on whatever `python3` is on PATH.
 from __future__ import annotations
 
 import json
+import os
 import shlex
 import subprocess
 from pathlib import Path
 
 PLUGIN = "analysis-workflow"
+
+#: The guards the human can lift for a session, by the name they type after `/analysis-workflow:allow`.
+GUARDS = ("layout", "paths", "pixi", "shared-writes")
+ALLOW = f"{PLUGIN}:allow"
+
+
+def marker(payload: dict) -> Path | None:
+    """The file listing the guards lifted for the payload's session, one per line; None if it has no home."""
+    data, session = os.environ.get("CLAUDE_PLUGIN_DATA"), Path(str(payload.get("session_id") or "")).name
+    return Path(data) / "exceptions" / session if data and session else None
+
+
+def lifted(payload: dict) -> list[str]:
+    """The guards the human lifted for the payload's session, subagents included; `allow_exception.py` records them."""
+    try:
+        return marker(payload).read_text().split()
+    except (OSError, AttributeError):
+        return []
+
+
+def how_to_lift(guard: str) -> str:
+    """The last line of a guard's refusal."""
+    return f"Only the human can lift this guard, for this session, by typing `/{ALLOW} {guard}`."
+
 
 #: `pixi` subcommands that change the workspace environment, or use it and so install it first if it is missing.
 PIXI_ENV_COMMANDS = frozenset(

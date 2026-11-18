@@ -18,7 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from _repo import adopted, checkouts
+from _repo import adopted, checkouts, lifted
 
 BEGIN, END = "# analysis-workflow: main environment", "# analysis-workflow: end"
 
@@ -56,10 +56,13 @@ def write_block(env_file: Path, variables: dict[str, str]) -> None:
 
 def main() -> int:
     """Read the hook payload from stdin; return the exit code."""
-    found = checkouts(Path(json.load(sys.stdin).get("cwd") or ".").resolve())
+    payload = json.load(sys.stdin)
+    found = checkouts(Path(payload.get("cwd") or ".").resolve())
     if not (found and adopted(found[0])):
         return 0
     print((Path(__file__).parent / "session_context.md").read_text(), end="")
+    if guards := lifted(payload):
+        print(f"\nLifted by the human for this session: the guard(s) {', '.join(guards)}.")
     toplevel, main_checkout = found
     env_file = os.environ.get("CLAUDE_ENV_FILE")
     variables = activation(toplevel, main_checkout) if env_file and (main_checkout / "pixi.toml").exists() else {}
