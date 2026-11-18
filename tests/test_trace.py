@@ -14,6 +14,7 @@ from typer.testing import CliRunner
 
 from analysis_workflow import commit_adata, credit, writes
 from analysis_workflow.cli import app
+from analysis_workflow.graph import OUTSIDE, dot
 from analysis_workflow.trace import changed_since_declared, declared, missing_inputs, trace
 
 STORE = "data/ds/processed/working/a.zarr"
@@ -82,7 +83,6 @@ def test_a_file_traces_back_to_the_raw_data(project):
     tree = found.as_tree().splitlines()
     assert tree[0] == "human_fig_v1/outputs/fig.parquet  [human_fig_v1]"
     assert any(line.strip() == "a.zarr: obs/annot  [agent_annot_v1]" for line in tree)
-    assert "-->|agent_annot_v1|" in found.as_mermaid()
 
 
 def Path_name(node_id):
@@ -228,9 +228,91 @@ def test_trace_command_formats(project, monkeypatch):
     assert tasks.output.split() == [
         f"analysis/ds/topic/{n}" for n in ("agent_annot_v1", "agent_build_v1", "human_fig_v1")
     ]
-    assert CliRunner().invoke(app, ["trace", STORE, "obs/annot", "--format", "mermaid"]).output.startswith("flowchart")
     assert '"target"' in CliRunner().invoke(app, ["trace", STORE, "obs/annot", "--format", "json"]).output
-    assert CliRunner().invoke(app, ["trace", FIGURE, "--format", "pdf"]).exit_code == 1
+    assert CliRunner().invoke(app, ["trace", FIGURE, "--format", "mermaid"]).exit_code == 1
+
+
+def test_the_graph_has_a_node_per_task_and_an_arrow_per_pair(project):
+    """Each task says what it produced and what it consumed that no task made; the artifact asked about is marked."""
+    main, tasks = project
+    (tasks["human_fig_v1"] / "README.md").write_text(
+        "# human_fig_v1\n\n**Date:** 2026-01-29\n**Author:** A. Human\n**Id:** 00000003\n"
+    )
+    text = dot(trace(main / FIGURE, start=main), main, today=datetime.date(2026, 2, 1))
+    topic = "analysis/ds/topic"
+    assert [line.strip() for line in text.splitlines() if "->" in line] == [
+        f'"{topic}/agent_annot_v1" -> "{topic}/human_fig_v1";',
+        f'"{topic}/agent_build_v1" -> "{topic}/agent_annot_v1";',
+    ]
+    build, annot, fig = (
+        next(line for line in text.splitlines() if line.strip().startswith(f'"{topic}/{name}" ['))
+        for name in ("agent_build_v1", "agent_annot_v1", "human_fig_v1")
+    )
+    assert "raw/counts.h5ad" in build and "a.zarr (2 keys)" in build
+    assert "labels.parquet" in annot and "a.zarr: obs/annot" in annot and "raw/" not in annot
+    assert "<B>▶ fig.parquet</B>" in fig and "A. Human · 2026-01-29" in fig
+    assert "<B>Tracing fig.parquet</B>" in text and "on 2026-02-01 in myproject" in text
+    assert "<B>▶" not in build + annot  # only the artifact asked about is highlighted
+
+
+def test_the_graph_names_and_colours_places_outside_the_repo(project, monkeypatch, tmp_path):
+    """A place outside the repo has its own colour, the same whichever artifact is drawn."""
+    main, tasks = project
+    monkeypatch.setenv("HOME", str(tmp_path))
+    (tmp_path / "cache").mkdir()
+    (tmp_path / "cache" / "model.pkl").write_text("model")
+    other = tmp_path / "other_repo"
+    (other / ".git").mkdir(parents=True)
+    (other / "atlas.h5ad").write_text("atlas")
+    declare(tasks["agent_build_v1"], [{"path": RAW}, {"path": "~/cache/model.pkl"}])
+    declare(tasks["human_fig_v1"], [{"path": LABELS}, {"path": str(other / "atlas.h5ad")}])
+
+    whole = dot(trace(main / FIGURE, start=main), main)
+    home, repo = OUTSIDE[0], OUTSIDE[1]  # by name: "home directory" before "other_repo"
+    assert f'<FONT COLOR="{home}">▌</FONT>cache/model.pkl' in whole
+    assert f'<FONT COLOR="{repo}">▌</FONT>atlas.h5ad' in whole
+    assert f'<FONT COLOR="{home}">▌</FONT>home directory' in whole  # the legend names both places
+    assert f'<FONT COLOR="{repo}">▌</FONT>other_repo' in whole
+
+    part = dot(trace(main / STORE, "X", start=main), main)  # a trace that never reaches the other repo
+    assert f'<FONT COLOR="{home}">▌</FONT>cache/model.pkl' in part and "other_repo" not in part
+
+
+def test_the_graph_counts_what_it_does_not_name(project):
+    main, tasks = project
+    raw = [f"data/ds/raw/run{i}/counts.h5ad" for i in range(5)]
+    for path in raw:
+        (main / path).parent.mkdir(parents=True)
+        (main / path).write_text("raw")
+    declare(tasks["agent_build_v1"], [{"path": path} for path in raw])
+    text = dot(trace(main / STORE, "X", start=main), main)
+    assert "raw/run0/counts.h5ad · raw/run1/counts.h5ad · " in text and "raw/run2/counts.h5ad +2" in text
+    assert "run3" not in text
+
+
+def test_no_graph_of_what_no_task_made(project, monkeypatch):
+    main, _ = project
+    with pytest.raises(ValueError, match="No task made"):
+        dot(trace(main / RAW, start=main), main)
+    monkeypatch.chdir(main)
+    result = CliRunner().invoke(app, ["trace", RAW, "--format", "dot"])
+    assert result.exit_code == 1 and "No task made" in result.output
+
+
+def test_the_graph_from_the_command(project, monkeypatch, tmp_path):
+    main, _ = project
+    monkeypatch.chdir(main)
+    text = CliRunner().invoke(app, ["trace", FIGURE, "--format", "dot"])
+    assert text.exit_code == 0 and text.output.startswith("digraph trace {")
+    needs_output = CliRunner().invoke(app, ["trace", FIGURE, "--format", "pdf"])
+    assert needs_output.exit_code == 1 and "--output" in needs_output.output
+
+    out = tmp_path / "graph.pdf"
+    drawn = CliRunner().invoke(app, ["trace", FIGURE, "--format", "pdf", "--output", str(out)])
+    if shutil.which("dot"):
+        assert drawn.exit_code == 0 and out.read_bytes().startswith(b"%PDF")
+    else:
+        assert drawn.exit_code == 1 and "pixi add graphviz" in drawn.output and not out.exists()
 
 
 def test_code_committed_after_the_declaration_is_noticed(project, git):

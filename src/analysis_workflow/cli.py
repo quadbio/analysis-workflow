@@ -9,6 +9,7 @@ from pathlib import Path
 
 import typer
 
+from analysis_workflow.graph import dot, render
 from analysis_workflow.paths import (
     ANALYSIS_DIR,
     LANES,
@@ -248,7 +249,12 @@ def inputs(
 def trace_command(
     artifact: Path = typer.Argument(..., help="A store in shared storage, or a file such as one in a task's outputs/."),
     key: str | None = typer.Argument(None, help="The key in the store: obs/leiden, X, tables/table/obs/leiden."),
-    output: str = typer.Option("tree", "--format", help="tree, mermaid, json or tasks."),
+    form: str = typer.Option(
+        "tree", "--format", help="tree, json or tasks; dot or pdf for a graph of the tasks, drawn by Graphviz."
+    ),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Where `--format pdf` writes the graph; a .svg or .png suffix gives that type."
+    ),
 ) -> None:
     """Trace one artifact back through the tasks that made it."""
     try:
@@ -263,11 +269,20 @@ def trace_command(
         raise typer.Exit(1)
     formats = {
         "tree": found.as_tree,
-        "mermaid": found.as_mermaid,
         "json": found.as_json,
         "tasks": lambda: "\n".join(found.tasks()),
+        "dot": lambda: dot(found, Path.cwd()),
     }
-    if output not in formats:
-        typer.echo(f"Error: --format is one of {', '.join(formats)}.", err=True)
+    if form not in (*formats, "pdf"):
+        typer.echo(f"Error: --format is one of {', '.join(formats)}, pdf.", err=True)
         raise typer.Exit(1)
-    typer.echo(formats[output]())
+    try:
+        if form != "pdf":
+            typer.echo(formats[form]())
+        elif output is None:
+            raise ValueError("`--format pdf` needs `--output <file>`.")
+        else:
+            typer.echo(f"wrote {render(dot(found, Path.cwd()), output)}")
+    except (ValueError, RuntimeError) as err:
+        typer.echo(f"Error: {err}", err=True)
+        raise typer.Exit(1) from err

@@ -19,10 +19,11 @@ One artifact per report: a key in a store, or a file.
 
    If it names tasks without declared inputs, say which, offer to run the `declare-inputs` skill on them, and
    stop: a trace is only as complete as the declarations it follows.
-2. `--format mermaid` gives the graph: artifacts as nodes, each edge labelled with the task that made its target.
-   `--format tasks` lists the task directories on the path.
+2. `--format pdf --output <file>` draws the graph: one node per task, with what it produced on this path and what
+   it consumed that no task made. Save it in the task's `figures/` when the report belongs to a task, else beside
+   the report. `--format tasks` lists the task directories on the path.
 3. Read the README of each task on the path for its author, its date and its opening sentence.
-4. Write the report: the graph in a `mermaid` block, then the summary, in exactly this form.
+4. Write the report: the path of the graph, then the summary, in exactly this form.
 
    ```markdown
    ## <key> in <store>
