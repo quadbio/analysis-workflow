@@ -337,7 +337,7 @@ def test_credit_records_keys_older_than_the_records(tmp_path, adata, task, other
     assert records(path)[-1]["keys"] == ["obsm/X_new"]
 
 
-def test_credit_refuses_what_it_cannot_record(tmp_path, adata, task, store):
+def test_credit_refuses_what_it_cannot_record(tmp_path, adata, task, other, store):
     then = datetime.datetime(2026, 1, 27)
     with pytest.raises(KeyError, match="already covers: X"):
         credit(store, ["X"], task=task, at=then, yes=True)
@@ -349,8 +349,8 @@ def test_credit_refuses_what_it_cannot_record(tmp_path, adata, task, store):
     with pytest.raises(ValueError, match="in the future"):
         credit(old, ["X"], task=task, at=datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=1))
     credit(old, ["X"], task=task, at=then, yes=True)
-    with pytest.raises(ValueError, match="already holds a record"):
-        credit(old, ["obs/a"], task=task, at=then, yes=True)
+    with pytest.raises(ValueError, match="already holds a record"):  # a trace tells a store's records apart by time
+        credit(old, ["obs/a"], task=other, at=then, yes=True)
     assert [r["keys"] for r in records(old)] == [["X"]]
 
     consolidated = tmp_path / "cons.zarr"

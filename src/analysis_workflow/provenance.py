@@ -270,8 +270,8 @@ def credit(path, keys, *, task: TaskPaths | str | Path, at: datetime.datetime, y
     KeyError
         If a key is not in the store, or a record already covers it.
     ValueError
-        If the task's README has no id, ``at`` is in the future, the store already holds a record of this task
-        at ``at``, ``path`` is no store, or it is an AnnData store with consolidated metadata.
+        If the task's README has no id, ``at`` is in the future or the time of another record of the store,
+        ``path`` is no store, or it is an AnnData store with consolidated metadata.
     """
     path, credited, wanted = Path(path).resolve(), _task(task), sorted(set(keys))
     if (identity := task_id(credited.task)) is None:
@@ -298,8 +298,8 @@ def credit(path, keys, *, task: TaskPaths | str | Path, at: datetime.datetime, y
         "at": at.strftime(TIME),
         "recorded": now.strftime(TIME),
     }
-    if any((r["task"], r["at"]) == (record["task"], record["at"]) for r in found):
-        raise ValueError(f"{path} already holds a record of {record['path']} at {record['at']}.")
+    if any(r["at"] == record["at"] for r in found):  # a store's records are told apart by their time
+        raise ValueError(f"{path} already holds a record written {record['at']}: give this one another time.")
     listed = "\n".join(f"  {k}" for k in wanted) or "  nothing to credit"
     logger.info("Crediting to %s, as written %s, in %s:\n%s", record["path"], record["at"], path, listed)
     if not yes or not wanted:
