@@ -20,15 +20,17 @@ Given several, hand each to its own subagent, with this section as its brief.
 
 1. Read every script and notebook of the task, `scripts/_common.py` included. Follow calls into the repo's own
    package and into sibling packages far enough to see which keys a called function uses, its defaults included.
-2. List what the code consumes:
-   - keys of a shared store it **uses**, not merely loads: a notebook that reads a whole object and plots two
-     columns used those two. `*` stands for the whole object, as when the task copies it;
+2. List what the code **uses**, not merely loads: a key or a file read into a variable that nothing refers to is
+   left out.
+   - keys of a shared store: a notebook that reads a whole object and plots two columns used those two. A task
+     that copies a store declares `*`, the whole object, also when the copy drops keys;
    - files of other tasks: in their `outputs/` or `results/`, and code imported from them;
    - data files: under `data/`, or outside the repo by absolute path (`~/...` for a per-user cache, such as a
      downloaded model).
 
    Leave out what the task writes itself, and keys it wrote and then reads back.
-3. Resolve a path the code builds at run time (a date, a section name, a glob) against what is on disk.
+3. Resolve a path the code builds at run time (a date, a section name, a glob) against what is on disk. Files
+   read from one directory by a loop or a glob are listed once, as that directory.
 4. Write the list, and nothing else, to `<task>/inputs.yaml`. Paths inside the repo are relative to its root; keys
    are named as the store's records name them. A task that consumes nothing gets `[]`.
 
