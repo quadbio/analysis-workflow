@@ -27,7 +27,9 @@ from _repo import (
     adopted,
     as_is,
     checkouts,
+    how_to_lift,
     is_root_of_worktree,
+    lifted,
     manifest_arg,
     nearest_manifest,
     pixi_calls,
@@ -78,7 +80,8 @@ def _rules(repo: str) -> list[tuple[re.Pattern, str, str]]:
 
 def main() -> int:
     """Read the hook payload from stdin; return the exit code."""
-    tool_input = json.load(sys.stdin).get("tool_input", {})
+    payload = json.load(sys.stdin)
+    tool_input = payload.get("tool_input", {})
     file_path = Path(tool_input.get("file_path") or tool_input.get("notebook_path") or "")
     if "analysis" not in file_path.parts or file_path.suffix not in CODE_SUFFIXES:
         return 0
@@ -102,13 +105,13 @@ def main() -> int:
                 "with MAIN passed in at submit",
             )
         )
-    if not hits:
+    if not hits or "paths" in lifted(payload):
         return 0
 
     print(f"Refused: {file_path.name} would contain {', and '.join(what for what, _ in hits)}.", file=sys.stderr)
     for _, fix in hits:
         print(f"  -> {fix}", file=sys.stderr)
-    print("See the analysis-workflow skill (task outputs).", file=sys.stderr)
+    print(f"See the analysis-workflow skill (task outputs). {how_to_lift('paths')}", file=sys.stderr)
     return 2
 
 

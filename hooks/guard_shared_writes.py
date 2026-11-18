@@ -18,7 +18,7 @@ import json
 import sys
 from pathlib import Path
 
-from _repo import adopted, checkouts, shell_calls
+from _repo import adopted, checkouts, how_to_lift, lifted, shell_calls
 
 COMMANDS = frozenset({"cp", "mv", "rsync"})
 #: Options of `cp` and `mv` that name the destination directory, in place of the last operand. To `rsync`, `-t`
@@ -66,13 +66,15 @@ def main() -> int:
         target = destination(name, args)
         if target is None or any(c in target for c in "$`") or not into_shared_storage(target, cwd, found):
             continue
+        if "shared-writes" in lifted(payload):
+            return 0
         print(
             f"Refused: `{name}` into shared storage ({target}).\n"
             "An object enters `data/<dataset>/processed/` from Python, inside a `writes` block, so the store\n"
             "records which task wrote it, and only after the human approved the write:\n"
             "    with writes(dest):\n"
             "        shutil.copytree(src, dest)\n"
-            "See the analysis-workflow skill (Tasks, Finish).",
+            f"See the analysis-workflow skill (Tasks, Finish). {how_to_lift('shared-writes')}",
             file=sys.stderr,
         )
         return 2

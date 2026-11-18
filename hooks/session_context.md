@@ -16,3 +16,6 @@ analysis code, outputs or data. Always:
 5. A worktree, and every batch job submitted from it, runs on the main checkout's environment; only the human
    installs it, in the main checkout. The line below says whether it is active in every Bash command. Batch jobs
    run `pixi run --manifest-path "$MAIN/pixi.toml" --as-is ...`.
+
+A rule of these conventions is broken only with the human's explicit approval, and the exception is noted as the
+repo's `CONVENTIONS.md` says. Only the human lifts a guard hook: pass on the command its refusal names.

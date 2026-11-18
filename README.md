@@ -9,7 +9,7 @@ only. The plugin adds what only agents do: one task per session, git worktree an
 | --- | --- |
 | `skills/analysis-workflow/` | The agent's side: task lifecycle in a worktree, sign-off, PRs, environments, setting up repos. Loaded on demand. |
 | `skills/declare-inputs/`, `skills/trace-lineage/` | What a task consumed, written to its `inputs.yaml` from its code; and how an artifact was made, as a graph and a summary. |
-| `hooks/` | Always-on core rules and the main checkout's environment at session start; guards that stop a rule being broken by accident. |
+| `hooks/` | Always-on core rules and the main checkout's environment at session start; guards that stop a rule being broken by accident, each of which you can lift for a session. |
 | `src/analysis_workflow/` | The Python package and its `analysis-workflow` command: task paths, writes to shared stores and their records, tracing, layout checks; the task template. |
 
 It assumes analysis repos made from [analysis_template](https://github.com/quadbio/analysis_template)
@@ -34,6 +34,10 @@ claude --worktree <task>
    task wrote them.
 4. It opens a PR whose body holds the details; the task README summarizes each PR. Once it is merged and its batch
    jobs have finished, leave with `/exit` and remove the worktree.
+
+A rule is broken only with your approval. When a guard refuses something you want done, the agent passes on the
+command that lifts it for that session, `/analysis-workflow:allow <guard>`, which only you can run; the PR notes
+the exception (the template's `CONVENTIONS.md`).
 
 You work the same way, in `human_` task directories in the main checkout (the template's `CONVENTIONS.md`). A task that changes the environment locks, installs and tests
 it in a temporary checkout beside the main one; after its merge you pull and run `pixi install` there. With no

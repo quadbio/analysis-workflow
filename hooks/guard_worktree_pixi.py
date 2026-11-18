@@ -31,7 +31,9 @@ from _repo import (
     adopted,
     as_is,
     checkouts,
+    how_to_lift,
     is_root_of_worktree,
+    lifted,
     manifest_arg,
     nearest_manifest,
     pixi_calls,
@@ -75,19 +77,20 @@ def main() -> int:
         if found and adopted(found[0]):
             main_manifest = (found[1] / "pixi.toml").resolve()
             on_main = any(_manifest(args, cwd) == main_manifest and not as_is(args) for args in calls)
-    if on_main and not blocked:
+    if not (on_main or blocked) or "pixi" in lifted(payload):
+        return 0
+    if not blocked:
         print(
             "Refused: a `pixi` call on the main checkout's environment without `--as-is`, from a worktree.\n"
             "It would relock or install into main whenever main's manifest or lock is ahead of its environment.\n"
             "  - to run something: python <script> (this session runs on the main checkout's environment),\n"
             "    or pixi run --manifest-path <main checkout>/pixi.toml --as-is python <script>\n"
             "  - to change the environment: lock and install it in a temporary checkout beside the main one\n"
-            "    (skill, Environments); installing the MAIN checkout's environment is the human's.",
+            "    (skill, Environments); installing the MAIN checkout's environment is the human's.\n"
+            f"{how_to_lift('pixi')}",
             file=sys.stderr,
         )
         return 2
-    if not blocked:
-        return 0
 
     print(
         "Refused: a `pixi` command that builds or changes an environment on a worktree's root workspace.\n"
@@ -96,7 +99,8 @@ def main() -> int:
         "  - to run something: python <script> (this session runs on the main checkout's environment),\n"
         "    or pixi run --manifest-path <main checkout>/pixi.toml --as-is python <script>\n"
         "  - to change the environment: lock and install it in a temporary checkout beside the main one\n"
-        "    (skill, Environments); installing the MAIN checkout's environment is the human's.",
+        "    (skill, Environments); installing the MAIN checkout's environment is the human's.\n"
+        f"{how_to_lift('pixi')}",
         file=sys.stderr,
     )
     return 2

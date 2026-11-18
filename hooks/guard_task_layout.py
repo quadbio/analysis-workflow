@@ -22,7 +22,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from _repo import adopted, checkouts
+from _repo import adopted, checkouts, how_to_lift, lifted
 
 PLUGIN = Path(__file__).parents[1]
 PACKAGE = PLUGIN / "src" / "analysis_workflow"
@@ -168,11 +168,11 @@ def main() -> int:
         problems = check_changes(Path(payload.get("cwd") or "."))
     else:
         problems = check_write(payload.get("tool_input", {}))
-    if not problems:
+    if not problems or "layout" in lifted(payload):
         return 0
     for why in problems:
         print(f"Off the task layout: {why}", file=sys.stderr)
-    print("See the analysis-workflow skill (Tasks) and its task template.", file=sys.stderr)
+    print(f"See the analysis-workflow skill (Tasks) and its task template. {how_to_lift('layout')}", file=sys.stderr)
     return 2
 
 
