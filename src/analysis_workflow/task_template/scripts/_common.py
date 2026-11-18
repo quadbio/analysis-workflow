@@ -10,5 +10,5 @@ FIGURES = PATHS.figures
 OUTPUTS = PATHS.outputs
 LOGS = PATHS.logs
 
-#: The working object this task reads, supplied by the human at session start and recorded in README.md.
+#: The working object this task reads, supplied by the human at session start.
 WORKING_OBJECT = None

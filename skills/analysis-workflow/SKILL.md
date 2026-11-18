@@ -22,6 +22,7 @@ Elsewhere:
 - the repo's `AGENTS.md`: its datasets, where its working objects live, its environments. It wins over examples here;
 - figures, analysis methods, and the compute environment with its job submission: their own docs or skills.
   Nothing here covers them, and these conventions hold on any machine;
+- what a task consumed, and how an artifact was made: the `declare-inputs` and `trace-lineage` skills;
 - why the storage rules are what they are: `references/storage.md`.
 
 ## Where code goes
@@ -43,9 +44,10 @@ branch, merged through one or more PRs; a later answer to the same question is t
 **Start**
 1. `analysis-workflow new analysis/<dataset>/<topic>/agent_<name>_vN --author "<your model>"`; if `vN` is not the
    next version, it names the one that is.
-2. Settle what session rule 3 asks, the working object with its label keys and the deliverables, and record both in
-   the README. Deliverables are any of a report, a figure, an HTML page, just results in `outputs/` and a
-   write-back; start from the default the session start lists, if any, which the human may change for this task.
+2. Settle what session rule 3 asks: the working object with its label keys, set in `scripts/_common.py`, and the
+   deliverables, recorded in the README. Deliverables are any of a report, a figure, an HTML page, just results in
+   `outputs/` and a write-back; start from the default the session start lists, if any, which the human may change
+   for this task.
 
 **Run**
 - `PATHS = task_paths(__file__)` lives in `scripts/_common.py`; call `PATHS.ensure()` in the writer. The tracked
@@ -69,7 +71,8 @@ repo, a short summary.
 2. Write back: dry run, sign-off on that diff, then `yes=True` inside `with writes(<store>):`.
 3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off, written or copied
    there inside a `writes` block. Ask which subdirectory; record the path.
-4. `analysis-workflow check layout`, and `check provenance <store>` for each store written to; then push.
+4. The `declare-inputs` skill on the task. Then `analysis-workflow check layout`, `check inputs <task>` and, for
+   each store written to, `check provenance <store>`; then push.
 5. Open the PR, its body from the PR template; then add it with a short summary to the README and push again. The
    body is edited until the merge, never after.
 6. The worktree is removed only once no batch job submitted from it is still queued or running.

@@ -1,4 +1,4 @@
-"""``analysis-workflow new``: start a task directory; ``analysis-workflow check ...``: report problems."""
+"""``analysis-workflow new``: start a task; ``check ...``: report problems; ``trace``: how an artifact was made."""
 
 import datetime
 import re
@@ -22,6 +22,7 @@ from analysis_workflow.paths import (
     main_checkout,
 )
 from analysis_workflow.provenance import records, uncovered
+from analysis_workflow.trace import changed_since_declared, declared, missing_inputs, task_dirs, trace
 
 app = typer.Typer(no_args_is_help=True)
 check = typer.Typer(no_args_is_help=True)
@@ -206,3 +207,56 @@ def provenance(store: Path = typer.Argument(..., help="An AnnData or SpatialData
     for key in missing:
         typer.echo(f"  {key}")
     typer.echo(f"\n{len(missing)} item(s) to look at." if missing else "\nClean.")
+
+
+@check.command("inputs")
+def inputs(
+    tasks: list[Path] = typer.Argument(None, help="Task directories; by default every task of this checkout."),
+) -> None:
+    """Report tasks that have no `inputs.yaml`, or whose list names something that is not there or is out of date."""
+    found = [t.resolve() for t in tasks] if tasks else task_dirs(_checkouts_of(Path.cwd())[0])
+    undeclared = [t for t in found if declared(t) is None]
+    missing = [(t, what) for t in found for what in missing_inputs(t)]
+    stale = [t for t in found if declared(t) is not None and changed_since_declared(t)]
+
+    typer.echo(f"[inputs not declared]          {len(undeclared)} found")
+    for task in undeclared:
+        typer.echo(f"  {task}")
+    typer.echo(f"\n[declared, but not there]      {len(missing)} found")
+    for task, what in missing:
+        typer.echo(f"  {task.name}: {what}")
+    typer.echo(f"\n[code changed since declared]  {len(stale)} found")
+    for task in stale:
+        typer.echo(f"  {task}")
+
+    problems = len(undeclared) + len(missing) + len(stale)
+    typer.echo(f"\n{problems} item(s) for the `declare-inputs` skill." if problems else "\nClean.")
+
+
+@app.command("trace")
+def trace_command(
+    artifact: Path = typer.Argument(..., help="A store in shared storage, or a file such as one in a task's outputs/."),
+    key: str | None = typer.Argument(None, help="The key in the store: obs/leiden, X, tables/table/obs/leiden."),
+    output: str = typer.Option("tree", "--format", help="tree, mermaid, json or tasks."),
+) -> None:
+    """Trace one artifact back through the tasks that made it."""
+    try:
+        found = trace(artifact, key, start=Path.cwd())
+    except ValueError as err:
+        typer.echo(f"Error: {err}", err=True)
+        raise typer.Exit(1) from err
+    if found.undeclared:
+        typer.echo("No declared inputs for these tasks on the path; run the `declare-inputs` skill on them:", err=True)
+        for task in found.undeclared:
+            typer.echo(f"  {task}", err=True)
+        raise typer.Exit(1)
+    formats = {
+        "tree": found.as_tree,
+        "mermaid": found.as_mermaid,
+        "json": found.as_json,
+        "tasks": lambda: "\n".join(found.tasks()),
+    }
+    if output not in formats:
+        typer.echo(f"Error: --format is one of {', '.join(formats)}.", err=True)
+        raise typer.Exit(1)
+    typer.echo(formats[output]())

@@ -20,13 +20,6 @@ otherwise; a later change is recorded here too. -->
 | <e.g. a figure> | `figures/<file>` (gitignored, in the main checkout) |
 | <e.g. a write-back> | Write-back, below |
 
-## Inputs
-
-<!-- The actual files, not concepts: this is what makes the task re-runnable. -->
-
-- Working object: `data/<dataset>/processed/working/<object>.zarr`, and the label keys used
-- Other artifacts consumed: `analysis/<dataset>/<topic>/<other_task>/outputs/<file>`, `data/<dataset>/processed/<subdirectory>/<file>`
-
 ## Write-back
 
 <!-- What each key written to a shared object holds, and the final path of anything placed in
