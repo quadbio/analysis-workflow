@@ -62,7 +62,7 @@ def test_new_task_from_the_template(repo):
     assert readme[0] == "# human_markers_v1"
     assert readme[2].startswith("**Date:** 20") and readme[3] == "**Author:** ML"
     assert (task / "scripts" / "_common.py").is_file()
-    assert not (task / "notebooks").exists()  # made only with --notebook
+    assert (task / "notebooks").is_dir() and not any((task / "notebooks").iterdir())
     assert re.fullmatch(r"\*\*Id:\*\* [0-9a-f]{8}", readme[4])
 
 

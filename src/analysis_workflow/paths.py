@@ -16,7 +16,7 @@ TRACKED_TASK_DIRS = ("results", "reports")
 #: Task subdirectories git ignores: heavy or noisy, anchored to the main checkout.
 UNTRACKED_TASK_DIRS = ("figures", "outputs", "logs")
 
-#: A task's notebooks, tracked; made by `analysis-workflow new --notebook`, so the task template does not carry it.
+#: A task's notebooks, tracked; agents may leave it empty, so the task template does not carry it.
 NOTEBOOK_DIR = "notebooks"
 
 #: A workflow engine's files (Snakefile, rules, configs, profiles), tracked.

@@ -94,8 +94,8 @@ def new_task(
             raise FileNotFoundError(f"This repo has no starter notebook at {NOTEBOOK_TEMPLATE}.")
 
     shutil.copytree(TASK_TEMPLATE, path, ignore=shutil.ignore_patterns("__pycache__"))
+    (path / NOTEBOOK_DIR).mkdir()
     if notebook is not None:
-        (path / NOTEBOOK_DIR).mkdir()
         shutil.copyfile(starter, path / NOTEBOOK_DIR / f"{notebook}.ipynb")
     readme = path / "README.md"
     fill = {
