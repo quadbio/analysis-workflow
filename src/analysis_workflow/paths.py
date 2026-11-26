@@ -153,32 +153,27 @@ def task_field(task: str | Path, field: str) -> str | None:
     return found and found[1]
 
 
-def unused(task: str | Path) -> list[Path]:
-    """What a task left unused: empty directories, and task-template files never changed; the topmost of each.
+def empty_dirs(task: str | Path) -> list[Path]:
+    """The task's empty directories, the topmost of each, in its checkout and, for its untracked ones, in main.
 
-    Looked for in the task's checkout and, for its untracked directories, in the main checkout. A `__pycache__` is no
-    use of its directory. `README.md` and `inputs.yaml` are never unused: every finished task has both.
+    A symlink is kept and never followed: what it points to is not the task's.
     """
     task = Path(task).resolve()
-    keep = {task / "README.md", task / INPUTS_FILE}
 
-    def is_unused(path: Path, root: Path) -> bool:
-        if path.is_dir():
-            return path.name == "__pycache__" or all(is_unused(child, root) for child in path.iterdir())
-        template = TASK_TEMPLATE / path.relative_to(root)
-        return path not in keep and template.is_file() and template.read_bytes() == path.read_bytes()
+    def empty(path: Path) -> bool:
+        return path.is_dir() and not path.is_symlink() and all(empty(child) for child in path.iterdir())
 
-    def topmost(directory: Path, root: Path) -> list[Path]:
+    def topmost(directory: Path) -> list[Path]:
         found = []
         for child in sorted(directory.iterdir()):
-            if is_unused(child, root):
+            if empty(child):
                 found.append(child)
-            elif child.is_dir():
-                found += topmost(child, root)
+            elif child.is_dir() and not child.is_symlink():
+                found += topmost(child)
         return found
 
-    found = topmost(task, task)
+    found = topmost(task)
     main_task = task_paths(task / "README.md").outputs.parent
     if main_task != task and main_task.is_dir():  # a worktree's task: its untracked directories are in main
-        found += [main_task] if is_unused(main_task, main_task) else topmost(main_task, main_task)
+        found += [main_task] if empty(main_task) else topmost(main_task)
     return found

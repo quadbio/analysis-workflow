@@ -22,8 +22,10 @@ from analysis_workflow.paths import (
     ANALYSIS_DIR,
     INPUTS_FILE,
     NON_TASK_DIRS,
+    NOTEBOOK_DIR,
     RESERVED_TASK_SUBDIRS,
     UNTRACKED_TASK_DIRS,
+    WORKFLOW_DIR,
     _checkouts_of,
     task_id,
 )
@@ -248,12 +250,12 @@ def missing_inputs(task: Path) -> list[str]:
 
 
 def changed_since_declared(task: Path) -> bool:
-    """Whether the task's scripts or notebooks changed, in git, after its ``inputs.yaml`` was last written."""
+    """Whether the task's code changed, in git, after its ``inputs.yaml`` was last written."""
 
     def git(*args: str) -> str:
         return subprocess.run(["git", *args], cwd=task, capture_output=True, text=True).stdout.strip()
 
-    code = ("scripts", "notebooks")
+    code = ("scripts", NOTEBOOK_DIR, WORKFLOW_DIR)
     if git("status", "--porcelain", "--", INPUTS_FILE):
         return False  # being written now
     declared_in = git("log", "-1", "--format=%H", "--", INPUTS_FILE)
