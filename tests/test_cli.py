@@ -123,3 +123,15 @@ def test_new_task_with_a_starter_notebook(repo):
     result = new("analysis/ds/t/human_a_v1", "--author", "ML", "--notebook", "01_qc", cwd=main)
     assert result.exit_code == 0, result.output
     assert (main / "analysis" / "ds" / "t" / "human_a_v1" / "notebooks" / "01_qc.ipynb").read_text() == "{}"
+
+
+def test_a_port_keeps_its_version_and_names_its_origin(repo):
+    main, _ = repo
+    origin = "old_repo:analysis/prep/segmentation_v8@abc1234"
+    assert "not v9" in new("analysis/ds/prep/human_seg_v9", "--author", "ML", cwd=main).output
+    result = new("analysis/ds/prep/human_seg_v9", "--author", "ML", "--ported-from", origin, cwd=main)
+    assert result.exit_code == 0, result.output
+    readme = (main / "analysis" / "ds" / "prep" / "human_seg_v9" / "README.md").read_text().splitlines()
+    assert readme[4].startswith("**Id:** ") and readme[5] == f"**Ported from:** {origin}"
+    result = new("analysis/ds/prep/human_seg_v3", "--author", "ML", "--ported-from", origin, cwd=main)
+    assert result.exit_code == 1 and "v10 or above" in result.output

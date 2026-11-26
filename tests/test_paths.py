@@ -46,6 +46,7 @@ def test_task_root_and_scripts_agree(repo):
     _, worktree = repo
     task = worktree / "analysis" / "topic" / "demo_v1"
     assert task_paths(task / "_common.py") == task_paths(task / "scripts" / "_common.py")
+    assert task_paths(task / "workflow" / "scripts" / "qc.py") == task_paths(task / "_common.py")
 
 
 @pytest.mark.parametrize("rel", ["analysis/_common.py", "elsewhere/demo_v1/_common.py"])

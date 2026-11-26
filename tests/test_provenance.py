@@ -81,6 +81,17 @@ def test_a_new_object_is_credited_to_the_task(tmp_path, adata, task, zarr_format
     assert json.loads(in_memory) == record
 
 
+def test_a_store_moved_out_of_the_tasks_outputs_is_credited_to_it(tmp_path, adata, task):
+    """How a store a batch job built in the task's `outputs/` enters shared storage."""
+    built, shared = tmp_path / "outputs" / "region.zarr", tmp_path / "processed" / "region.zarr"
+    spatial_store(built, adata)
+    shared.parent.mkdir()
+    with writes(shared, task=task):
+        shutil.move(built, shared)
+    (record,) = records(shared)
+    assert record["task"] == task_id(task) and uncovered(shared) == []
+
+
 def test_commit_adata_is_recorded_with_its_keys(store, adata, other):
     adata.obs["leiden"] = "x"
     adata.obsm["X_umap"] = np.zeros((adata.n_obs, 2))

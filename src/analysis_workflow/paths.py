@@ -19,9 +19,12 @@ UNTRACKED_TASK_DIRS = ("figures", "outputs", "logs")
 #: A task's notebooks, tracked; agents may leave it empty, so the task template does not carry it.
 NOTEBOOK_DIR = "notebooks"
 
+#: A workflow engine's files (Snakefile, rules, configs, profiles), tracked; only a task that runs one has it.
+WORKFLOW_DIR = "workflow"
+
 #: Directory names that are *inside* a task rather than a task themselves.
 RESERVED_TASK_SUBDIRS = frozenset(
-    {*TRACKED_TASK_DIRS, *UNTRACKED_TASK_DIRS, NOTEBOOK_DIR, "scripts", "slurm", "audits", "docs"}
+    {*TRACKED_TASK_DIRS, *UNTRACKED_TASK_DIRS, NOTEBOOK_DIR, WORKFLOW_DIR, "scripts", "slurm", "audits", "docs"}
 )
 
 #: A task directory's name says which lane made it: `human_<name>_vN` or `agent_<name>_vN`.

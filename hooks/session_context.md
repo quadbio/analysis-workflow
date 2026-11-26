@@ -1,8 +1,8 @@
 This repository follows the analysis-workflow conventions. Load the `analysis-workflow` skill before writing
 analysis code, outputs or data. Always:
 
-1. One task = one session = one git worktree = one directory `analysis/<dataset>/<topic>/.../agent_<name>_vN/`,
-   made with `analysis-workflow new`. A new task directory needs a new session, started with
+1. One task = one session = one git worktree = one directory `analysis/<dataset>/<topic>/.../agent_<name>_vN/`
+   (a port of older work: the lane the repo's `CONVENTIONS.md` gives it), made with `analysis-workflow new`. A new task directory needs a new session, started with
    `claude --worktree <name>` in the main checkout.
    Analysis only moves forward: earlier task directories are never edited, fixed or updated, but for the
    `declare-inputs` skill writing their `inputs.yaml`.

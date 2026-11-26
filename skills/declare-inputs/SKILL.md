@@ -18,8 +18,9 @@ else in an earlier task directory is touched.
 
 Given several, hand each to its own subagent, with this section as its brief.
 
-1. Read every script and notebook of the task, `scripts/_common.py` included. Follow calls into the repo's own
-   package and into sibling packages far enough to see which keys a called function uses, its defaults included.
+1. Read every script and notebook of the task, `scripts/_common.py` and the workflow files in `workflow/` included.
+   Follow calls into the repo's own package and into sibling packages far enough to see which keys a called
+   function uses, its defaults included.
 2. List what the code **uses**, not merely loads: a key or a file read into a variable that nothing refers to is
    left out.
    - keys of a shared store: a notebook that reads a whole object and plots two columns used those two. A task

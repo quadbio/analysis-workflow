@@ -42,14 +42,20 @@ def _version(directory: str, name: str) -> int | None:
 
 
 def new_task(
-    path: Path, author: str | None = None, notebook: str | None = None, today: datetime.date | None = None
+    path: Path,
+    author: str | None = None,
+    notebook: str | None = None,
+    today: datetime.date | None = None,
+    ported_from: str | None = None,
 ) -> Path:
     """Create the task directory ``path`` from the task template; return it.
 
     ``path`` is ``analysis/<dataset>/<topic>/.../<lane>_<name>_vN``, relative to the working directory or absolute,
     and ``vN`` must be the next version of ``<name>`` beside it, counted over both lanes, in this checkout and the
     main one. ``author`` defaults, for a human's task, to the git user name; an agent's task names its model.
-    ``notebook`` (``NN_<step>``) copies the repo's starter notebook into ``notebooks/``.
+    ``notebook`` (``NN_<step>``) copies the repo's starter notebook into ``notebooks/``. ``ported_from`` names the
+    older work the task ports, as ``<repo>:<path>@<commit>``, in the README's header; such a task keeps that
+    work's version, which must be above every version beside it.
     """
     path = Path(path).resolve()
     checkout, main = _checkouts_of(path)
@@ -75,7 +81,10 @@ def new_task(
         for c in d.iterdir()
         if (v := _version(c.name, m["name"]))
     ]
-    if int(m["version"]) != (expected := max(found, default=0) + 1):
+    expected = max(found, default=0) + 1
+    if ported_from is not None and int(m["version"]) < expected:
+        raise ValueError(f"A port keeps its version, which must be v{expected} or above in {parent}.")
+    if ported_from is None and int(m["version"]) != expected:
         raise ValueError(f"The next version of {m['name']!r} in {parent} is v{expected}, not v{m['version']}.")
     if notebook is not None:
         if not NOTEBOOK_NAME.fullmatch(notebook):
@@ -98,6 +107,8 @@ def new_task(
     for start, line in fill.items():
         i = next(i for i, old in enumerate(lines) if old.startswith(start))
         lines[i] = line + "\n"
+    if ported_from is not None:
+        lines.insert(lines.index(fill["**Id:**"] + "\n") + 1, f"**Ported from:** {ported_from}\n")
     readme.write_text("".join(lines))
     return path
 
@@ -109,10 +120,13 @@ def new(
         None, help="A human's name or initials (default: the git user name), or the model, e.g. 'Claude Opus 5.5'."
     ),
     notebook: str | None = typer.Option(None, help="Also copy the repo's starter notebook in, as NN_<step>."),
+    ported_from: str | None = typer.Option(
+        None, help="The older work this task ports, as <repo>:<path>@<commit>; the task keeps its version."
+    ),
 ) -> None:
     """Start a task directory from the task template."""
     try:
-        task = new_task(path, author, notebook)
+        task = new_task(path, author, notebook, ported_from=ported_from)
     except (ValueError, FileExistsError, FileNotFoundError) as err:
         typer.echo(f"Error: {err}", err=True)
         raise typer.Exit(1) from err

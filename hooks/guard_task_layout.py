@@ -2,10 +2,10 @@
 """Keep every task directory in the template's layout.
 
 A task directory (`analysis/<dataset>/<topic>/.../<name>_vN/`) holds at its top only what the task template holds
-(`src/analysis_workflow/task_template/`), its `notebooks/`, its `inputs.yaml`, the output directories of
-`task_paths` and a task-local environment. Its README's title is the directory's name, and its other headings are
-the template README's, all of them and in order. Both are read from their sources, the template and `paths.py`, so a
-change there is a change here.
+(`src/analysis_workflow/task_template/`), its `notebooks/` and `workflow/`, its `inputs.yaml`, the output
+directories of `task_paths` and a task-local environment. Its README's title is the directory's name, and its other
+headings are the template README's, all of them and in order. Both are read from their sources, the template and
+`paths.py`, so a change there is a change here.
 
 PreToolUse (Edit|Write|NotebookEdit): checks what this call would leave; exit 2 blocks it.
 Stop: checks the task directories this branch touches, committed or not, which also catches files made from the
@@ -35,11 +35,11 @@ TASK_ENVIRONMENT = {"pixi.toml", "pixi.lock"}
 
 
 def task_dirs() -> set[str]:
-    """The task's notebook and output directories and its inputs file, read from `paths.py` without running it.
+    """The task's notebook, workflow and output directories and its inputs file, read from `paths.py` unrun.
 
     The package targets a newer Python than this hook, and may not be installed.
     """
-    names = ("NOTEBOOK_DIR", "TRACKED_TASK_DIRS", "UNTRACKED_TASK_DIRS", "INPUTS_FILE")
+    names = ("NOTEBOOK_DIR", "WORKFLOW_DIR", "TRACKED_TASK_DIRS", "UNTRACKED_TASK_DIRS", "INPUTS_FILE")
     tree = ast.parse((PACKAGE / "paths.py").read_text())
     found = {
         target.id: ast.literal_eval(node.value)
@@ -48,7 +48,8 @@ def task_dirs() -> set[str]:
         for target in node.targets
         if isinstance(target, ast.Name) and target.id in names
     }
-    return {found["NOTEBOOK_DIR"], found["INPUTS_FILE"], *found["TRACKED_TASK_DIRS"], *found["UNTRACKED_TASK_DIRS"]}
+    singles = (found[name] for name in ("NOTEBOOK_DIR", "WORKFLOW_DIR", "INPUTS_FILE"))
+    return {*singles, *found["TRACKED_TASK_DIRS"], *found["UNTRACKED_TASK_DIRS"]}
 
 
 def allowed() -> set[str]:
