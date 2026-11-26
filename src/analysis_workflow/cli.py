@@ -21,7 +21,7 @@ from analysis_workflow.paths import (
     UNTRACKED_TASK_DIRS,
     _checkouts_of,
     main_checkout,
-    unused_dirs,
+    unused,
 )
 from analysis_workflow.provenance import records, uncovered
 from analysis_workflow.trace import changed_since_declared, declared, missing_inputs, task_dirs, trace
@@ -138,15 +138,18 @@ def new(
 
 @app.command("tidy")
 def tidy(task: Path = typer.Argument(..., help="The task directory, at its end.")) -> None:
-    """Remove the task's reserved directories it did not use: empty, or holding only unchanged template files."""
+    """Remove what the task left unused: empty directories, and task-template files never changed."""
     try:
-        found = unused_dirs(task)
+        found = unused(task)
     except (ValueError, RuntimeError) as err:
         typer.echo(f"Error: {err}", err=True)
         raise typer.Exit(1) from err
-    for directory in found:
-        shutil.rmtree(directory)
-        typer.echo(f"removed {directory}")
+    for path in found:
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+        typer.echo(f"removed {path}")
     if not found:
         typer.echo("Nothing unused.")
 

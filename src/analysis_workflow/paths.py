@@ -153,19 +153,32 @@ def task_field(task: str | Path, field: str) -> str | None:
     return found and found[1]
 
 
-def unused_dirs(task: str | Path) -> list[Path]:
-    """The task's reserved directories it did not use: empty, or holding only task-template files left unchanged.
+def unused(task: str | Path) -> list[Path]:
+    """What a task left unused: empty directories, and task-template files never changed; the topmost of each.
 
-    The tracked ones are looked for in the task's checkout, the untracked ones in the main checkout.
+    Looked for in the task's checkout and, for its untracked directories, in the main checkout. A `__pycache__` is no
+    use of its directory. `README.md` and `inputs.yaml` are never unused: every finished task has both.
     """
     task = Path(task).resolve()
-    paths = task_paths(task / "README.md")
-    places = [getattr(paths, name) if name in UNTRACKED_TASK_DIRS else task / name for name in RESERVED_TASK_SUBDIRS]
+    keep = {task / "README.md", task / INPUTS_FILE}
 
-    def unchanged(file: Path) -> bool:
-        if file.is_dir() or NON_TASK_DIRS & set(file.parts):  # a `__pycache__` is no use of the directory
-            return True
-        template = TASK_TEMPLATE / file.relative_to(task) if file.is_relative_to(task) else None
-        return template is not None and template.is_file() and template.read_bytes() == file.read_bytes()
+    def is_unused(path: Path, root: Path) -> bool:
+        if path.is_dir():
+            return path.name == "__pycache__" or all(is_unused(child, root) for child in path.iterdir())
+        template = TASK_TEMPLATE / path.relative_to(root)
+        return path not in keep and template.is_file() and template.read_bytes() == path.read_bytes()
 
-    return sorted(d for d in places if d.is_dir() and all(unchanged(f) for f in d.rglob("*")))
+    def topmost(directory: Path, root: Path) -> list[Path]:
+        found = []
+        for child in sorted(directory.iterdir()):
+            if is_unused(child, root):
+                found.append(child)
+            elif child.is_dir():
+                found += topmost(child, root)
+        return found
+
+    found = topmost(task, task)
+    main_task = task_paths(task / "README.md").outputs.parent
+    if main_task != task and main_task.is_dir():  # a worktree's task: its untracked directories are in main
+        found += [main_task] if is_unused(main_task, main_task) else topmost(main_task, main_task)
+    return found

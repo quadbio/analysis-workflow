@@ -138,20 +138,33 @@ def test_a_port_keeps_its_version_and_names_its_origin(repo):
     assert result.exit_code == 1 and "v10 or above" in result.output
 
 
-def test_tidy_removes_the_directories_a_task_did_not_use(repo):
+def test_tidy_removes_what_a_task_left_unused(repo):
     main, worktree = repo
     assert new("analysis/ds/topic/agent_markers_v1", "--author", "x", cwd=worktree).exit_code == 0
     task = worktree / "analysis" / "ds" / "topic" / "agent_markers_v1"
     paths = task_paths(task / "README.md").ensure()
     (paths.figures / "umap.pdf").write_text("pdf")
+    (paths.figures / "draft").mkdir()  # empty, inside a used directory
     (task / "scripts" / "__pycache__").mkdir()
-    (task / "workflow" / "rules").mkdir(parents=True)  # nested, but empty
+    (task / "workflow" / "rules").mkdir(parents=True)
+    (task / "inputs.yaml").write_text("[]\n")
     result = CliRunner().invoke(app, ["tidy", str(task)])
     assert result.exit_code == 0, result.output
-    assert sorted(p.name for p in task.iterdir()) == ["README.md"]  # `_common.py` was the template's
-    assert sorted(p.name for p in paths.figures.parent.iterdir()) == ["figures"]
+    assert sorted(p.name for p in task.iterdir()) == ["README.md", "inputs.yaml"]  # `_common.py` was the template's
+    assert [p.name for p in paths.figures.parent.iterdir()] == ["figures"]
+    assert [p.name for p in paths.figures.iterdir()] == ["umap.pdf"]
 
     (task / "scripts").mkdir()
     (task / "scripts" / "_common.py").write_text("WORKING_OBJECT = 'a.zarr'\n")
     assert "Nothing unused" in CliRunner().invoke(app, ["tidy", str(task)]).output
     assert (task / "scripts" / "_common.py").exists()
+
+
+def test_tidy_removes_the_untracked_place_of_a_task_that_wrote_nothing(repo):
+    main, worktree = repo
+    assert new("analysis/ds/topic/agent_markers_v1", "--author", "x", cwd=worktree).exit_code == 0
+    task = worktree / "analysis" / "ds" / "topic" / "agent_markers_v1"
+    task_paths(task / "README.md").ensure()
+    assert CliRunner().invoke(app, ["tidy", str(task)]).exit_code == 0
+    assert not (main / "analysis" / "ds" / "topic" / "agent_markers_v1").exists()
+    assert (task / "README.md").exists()
