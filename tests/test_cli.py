@@ -6,6 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from analysis_workflow.cli import HEAVY_RESULT_BYTES, app, heavy_tracked, orphaned_outputs, stray_worktree_outputs
+from analysis_workflow.paths import task_paths
 
 
 def test_stray_output_in_a_worktree(repo):
@@ -61,7 +62,7 @@ def test_new_task_from_the_template(repo):
     assert readme[0] == "# human_markers_v1"
     assert readme[2].startswith("**Date:** 20") and readme[3] == "**Author:** ML"
     assert (task / "scripts" / "_common.py").is_file()
-    assert (task / "notebooks").is_dir() and not any((task / "notebooks").iterdir())
+    assert not (task / "notebooks").exists()  # made only with --notebook
     assert re.fullmatch(r"\*\*Id:\*\* [0-9a-f]{8}", readme[4])
 
 
@@ -135,3 +136,22 @@ def test_a_port_keeps_its_version_and_names_its_origin(repo):
     assert readme[4].startswith("**Id:** ") and readme[5] == f"**Ported from:** {origin}"
     result = new("analysis/ds/prep/human_seg_v3", "--author", "ML", "--ported-from", origin, cwd=main)
     assert result.exit_code == 1 and "v10 or above" in result.output
+
+
+def test_tidy_removes_the_directories_a_task_did_not_use(repo):
+    main, worktree = repo
+    assert new("analysis/ds/topic/agent_markers_v1", "--author", "x", cwd=worktree).exit_code == 0
+    task = worktree / "analysis" / "ds" / "topic" / "agent_markers_v1"
+    paths = task_paths(task / "README.md").ensure()
+    (paths.figures / "umap.pdf").write_text("pdf")
+    (task / "scripts" / "__pycache__").mkdir()
+    (task / "workflow" / "rules").mkdir(parents=True)  # nested, but empty
+    result = CliRunner().invoke(app, ["tidy", str(task)])
+    assert result.exit_code == 0, result.output
+    assert sorted(p.name for p in task.iterdir()) == ["README.md"]  # `_common.py` was the template's
+    assert sorted(p.name for p in paths.figures.parent.iterdir()) == ["figures"]
+
+    (task / "scripts").mkdir()
+    (task / "scripts" / "_common.py").write_text("WORKING_OBJECT = 'a.zarr'\n")
+    assert "Nothing unused" in CliRunner().invoke(app, ["tidy", str(task)]).output
+    assert (task / "scripts" / "_common.py").exists()

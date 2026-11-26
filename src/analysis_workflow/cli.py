@@ -21,6 +21,7 @@ from analysis_workflow.paths import (
     UNTRACKED_TASK_DIRS,
     _checkouts_of,
     main_checkout,
+    unused_dirs,
 )
 from analysis_workflow.provenance import records, uncovered
 from analysis_workflow.trace import changed_since_declared, declared, missing_inputs, task_dirs, trace
@@ -93,8 +94,8 @@ def new_task(
             raise FileNotFoundError(f"This repo has no starter notebook at {NOTEBOOK_TEMPLATE}.")
 
     shutil.copytree(TASK_TEMPLATE, path, ignore=shutil.ignore_patterns("__pycache__"))
-    (path / NOTEBOOK_DIR).mkdir()
     if notebook is not None:
+        (path / NOTEBOOK_DIR).mkdir()
         shutil.copyfile(starter, path / NOTEBOOK_DIR / f"{notebook}.ipynb")
     readme = path / "README.md"
     fill = {
@@ -133,6 +134,21 @@ def new(
     typer.echo(f"created {task}")
     for p in sorted(task.rglob("*")):
         typer.echo(f"  {p.relative_to(task)}{'/' if p.is_dir() else ''}")
+
+
+@app.command("tidy")
+def tidy(task: Path = typer.Argument(..., help="The task directory, at its end.")) -> None:
+    """Remove the task's reserved directories it did not use: empty, or holding only unchanged template files."""
+    try:
+        found = unused_dirs(task)
+    except (ValueError, RuntimeError) as err:
+        typer.echo(f"Error: {err}", err=True)
+        raise typer.Exit(1) from err
+    for directory in found:
+        shutil.rmtree(directory)
+        typer.echo(f"removed {directory}")
+    if not found:
+        typer.echo("Nothing unused.")
 
 
 # Reporting thresholds, tuning knobs rather than facts about a project.

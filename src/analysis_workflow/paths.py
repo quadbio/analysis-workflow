@@ -16,10 +16,10 @@ TRACKED_TASK_DIRS = ("results", "reports")
 #: Task subdirectories git ignores: heavy or noisy, anchored to the main checkout.
 UNTRACKED_TASK_DIRS = ("figures", "outputs", "logs")
 
-#: A task's notebooks, tracked; agents may leave it empty, so the task template does not carry it.
+#: A task's notebooks, tracked; made by `analysis-workflow new --notebook`, so the task template does not carry it.
 NOTEBOOK_DIR = "notebooks"
 
-#: A workflow engine's files (Snakefile, rules, configs, profiles), tracked; only a task that runs one has it.
+#: A workflow engine's files (Snakefile, rules, configs, profiles), tracked.
 WORKFLOW_DIR = "workflow"
 
 #: Directory names that are *inside* a task rather than a task themselves.
@@ -151,3 +151,21 @@ def task_field(task: str | Path, field: str) -> str | None:
     line = re.compile(rf"^\*\*{re.escape(field)}:\*\*[ \t]*(.+?)[ \t]*$", re.MULTILINE)
     found = line.search(readme.read_text()) if readme.exists() else None
     return found and found[1]
+
+
+def unused_dirs(task: str | Path) -> list[Path]:
+    """The task's reserved directories it did not use: empty, or holding only task-template files left unchanged.
+
+    The tracked ones are looked for in the task's checkout, the untracked ones in the main checkout.
+    """
+    task = Path(task).resolve()
+    paths = task_paths(task / "README.md")
+    places = [getattr(paths, name) if name in UNTRACKED_TASK_DIRS else task / name for name in RESERVED_TASK_SUBDIRS]
+
+    def unchanged(file: Path) -> bool:
+        if file.is_dir() or NON_TASK_DIRS & set(file.parts):  # a `__pycache__` is no use of the directory
+            return True
+        template = TASK_TEMPLATE / file.relative_to(task) if file.is_relative_to(task) else None
+        return template is not None and template.is_file() and template.read_bytes() == file.read_bytes()
+
+    return sorted(d for d in places if d.is_dir() and all(unchanged(f) for f in d.rglob("*")))

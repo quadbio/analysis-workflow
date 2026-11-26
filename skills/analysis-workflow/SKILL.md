@@ -71,8 +71,8 @@ repo, a short summary.
 2. Write back: dry run, sign-off on that diff, then `yes=True` inside `with writes(<store>):`.
 3. An object other tasks will load is promoted to `data/<dataset>/processed/` at sign-off, written, copied or
    moved there inside a `writes` block. Ask which subdirectory; record the path.
-4. The `declare-inputs` skill on the task. Then `analysis-workflow check layout`, `check inputs <task>` and, for
-   each store written to, `check provenance <store>`; then push.
+4. `analysis-workflow tidy <task>`, then the `declare-inputs` skill on the task. Then `analysis-workflow check
+   layout`, `check inputs <task>` and, for each store written to, `check provenance <store>`; then push.
 5. Open the PR, its body from the PR template; then add it with a short summary to the README and push again. The
    body is edited until the merge, never after.
 6. The worktree is removed only once no batch job submitted from it is still queued or running.
