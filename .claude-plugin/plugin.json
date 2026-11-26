@@ -1,6 +1,6 @@
 {
   "name": "analysis-workflow",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Conventions for analysis repos where humans and coding agents work side by side: versioned task directories for both, one session, worktree and PR per agent task; worktree-safe output paths; additive write-back to AnnData and SpatialData stores, which record which task wrote what. Ships a skill, guard hooks and the analysis_workflow Python package.",
   "author": {
     "name": "quadbio"

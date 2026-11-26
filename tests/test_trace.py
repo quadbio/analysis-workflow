@@ -337,6 +337,10 @@ def test_code_committed_after_the_declaration_is_noticed(project, git):
     git(*commit, "declared again", cwd=main)
     assert not changed_since_declared(build)
 
+    (build / "workflow").mkdir()  # a workflow engine's files are code too
+    (build / "workflow" / "Snakefile").write_text("rule all:\n")
+    assert changed_since_declared(build)
+
 
 def test_check_inputs(project, git, monkeypatch):
     main, tasks = project

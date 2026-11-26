@@ -19,9 +19,12 @@ UNTRACKED_TASK_DIRS = ("figures", "outputs", "logs")
 #: A task's notebooks, tracked; agents may leave it empty, so the task template does not carry it.
 NOTEBOOK_DIR = "notebooks"
 
+#: A workflow engine's files (Snakefile, rules, configs, profiles), tracked.
+WORKFLOW_DIR = "workflow"
+
 #: Directory names that are *inside* a task rather than a task themselves.
 RESERVED_TASK_SUBDIRS = frozenset(
-    {*TRACKED_TASK_DIRS, *UNTRACKED_TASK_DIRS, NOTEBOOK_DIR, "scripts", "slurm", "audits", "docs"}
+    {*TRACKED_TASK_DIRS, *UNTRACKED_TASK_DIRS, NOTEBOOK_DIR, WORKFLOW_DIR, "scripts", "slurm", "audits", "docs"}
 )
 
 #: A task directory's name says which lane made it: `human_<name>_vN` or `agent_<name>_vN`.
@@ -148,3 +151,29 @@ def task_field(task: str | Path, field: str) -> str | None:
     line = re.compile(rf"^\*\*{re.escape(field)}:\*\*[ \t]*(.+?)[ \t]*$", re.MULTILINE)
     found = line.search(readme.read_text()) if readme.exists() else None
     return found and found[1]
+
+
+def empty_dirs(task: str | Path) -> list[Path]:
+    """The task's empty directories, the topmost of each, in its checkout and, for its untracked ones, in main.
+
+    A symlink is kept and never followed: what it points to is not the task's.
+    """
+    task = Path(task).resolve()
+
+    def empty(path: Path) -> bool:
+        return path.is_dir() and not path.is_symlink() and all(empty(child) for child in path.iterdir())
+
+    def topmost(directory: Path) -> list[Path]:
+        found = []
+        for child in sorted(directory.iterdir()):
+            if empty(child):
+                found.append(child)
+            elif child.is_dir() and not child.is_symlink():
+                found += topmost(child)
+        return found
+
+    found = topmost(task)
+    main_task = task_paths(task / "README.md").outputs.parent
+    if main_task != task and main_task.is_dir():  # a worktree's task: its untracked directories are in main
+        found += [main_task] if empty(main_task) else topmost(main_task)
+    return found

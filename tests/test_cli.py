@@ -6,6 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from analysis_workflow.cli import HEAVY_RESULT_BYTES, app, heavy_tracked, orphaned_outputs, stray_worktree_outputs
+from analysis_workflow.paths import task_paths
 
 
 def test_stray_output_in_a_worktree(repo):
@@ -123,3 +124,46 @@ def test_new_task_with_a_starter_notebook(repo):
     result = new("analysis/ds/t/human_a_v1", "--author", "ML", "--notebook", "01_qc", cwd=main)
     assert result.exit_code == 0, result.output
     assert (main / "analysis" / "ds" / "t" / "human_a_v1" / "notebooks" / "01_qc.ipynb").read_text() == "{}"
+
+
+def test_a_port_keeps_its_version_and_names_its_origin(repo):
+    main, _ = repo
+    origin = "old_repo:analysis/prep/segmentation_v8@abc1234"
+    assert "not v9" in new("analysis/ds/prep/human_seg_v9", "--author", "ML", cwd=main).output
+    result = new("analysis/ds/prep/human_seg_v9", "--author", "ML", "--ported-from", origin, cwd=main)
+    assert result.exit_code == 0, result.output
+    readme = (main / "analysis" / "ds" / "prep" / "human_seg_v9" / "README.md").read_text().splitlines()
+    assert readme[4].startswith("**Id:** ") and readme[5] == f"**Ported from:** {origin}"
+    result = new("analysis/ds/prep/human_seg_v3", "--author", "ML", "--ported-from", origin, cwd=main)
+    assert result.exit_code == 1 and "v10 or above" in result.output
+
+
+def test_tidy_removes_the_empty_directories_of_a_task(repo, tmp_path):
+    main, worktree = repo
+    assert new("analysis/ds/topic/agent_markers_v1", "--author", "x", cwd=worktree).exit_code == 0
+    task = worktree / "analysis" / "ds" / "topic" / "agent_markers_v1"
+    paths = task_paths(task / "README.md").ensure()
+    (paths.figures / "umap.pdf").write_text("pdf")
+    (paths.figures / "draft").mkdir()  # empty, inside a used directory
+    (task / "workflow" / "rules").mkdir(parents=True)
+    shared = tmp_path / "shared"
+    (shared / "empty").mkdir(parents=True)
+    (task / "results").mkdir(exist_ok=True)
+    (task / "results" / "link").symlink_to(shared)  # never followed
+    result = CliRunner().invoke(app, ["tidy", str(task)])
+    assert result.exit_code == 0, result.output
+    assert sorted(p.name for p in task.iterdir()) == ["README.md", "results", "scripts"]
+    assert [p.name for p in paths.figures.parent.iterdir()] == ["figures"]
+    assert [p.name for p in paths.figures.iterdir()] == ["umap.pdf"]
+    assert (shared / "empty").is_dir()
+    assert "No empty directories" in CliRunner().invoke(app, ["tidy", str(task)]).output
+
+
+def test_tidy_removes_the_untracked_place_of_a_task_that_wrote_nothing(repo):
+    main, worktree = repo
+    assert new("analysis/ds/topic/agent_markers_v1", "--author", "x", cwd=worktree).exit_code == 0
+    task = worktree / "analysis" / "ds" / "topic" / "agent_markers_v1"
+    task_paths(task / "README.md").ensure()
+    assert CliRunner().invoke(app, ["tidy", str(task)]).exit_code == 0
+    assert not (main / "analysis" / "ds" / "topic" / "agent_markers_v1").exists()
+    assert (task / "README.md").exists()

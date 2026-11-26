@@ -178,6 +178,8 @@ def test_layout_allows_the_template_readme_and_its_files(repo):
         ("results/a.csv", "a"),
         ("pixi.toml", "[workspace]\n"),  # a task-local environment
         ("outputs/model_v1/config.json", "{}"),  # a versioned folder inside the task
+        ("workflow/Snakefile", "rule all:"),  # a workflow engine's files
+        ("workflow/profiles/default/config.yaml", "jobs: 1"),
     ]:
         assert run("guard_task_layout.py", write(task / rel, content)) == 0, rel
 
