@@ -31,6 +31,9 @@ def write(path: Path, content: str) -> dict:
         'OUT = "/scratch/tmp.123/out"',
         'OUT = Path("data/raw/x.zarr")',
         'OUT = Path("figures/fig1.pdf")',
+        'sf.save(fig, "figures/fig2_atlas")',
+        "fig.savefig('figures/x.pdf')",
+        'fig.savefig(f"figures/{name}.pdf")',
     ],
 )
 def test_task_paths_blocks(repo, content):
@@ -48,6 +51,8 @@ def test_task_paths_blocks_absolute_paths_into_this_repo(repo):
     ("rel", "content"),
     [
         ("analysis/t_v1/run.py", "PATHS = task_paths(__file__)"),
+        ("analysis/t_v1/run.py", 'sf.save(fig, PATHS.figures / "fig2_atlas")'),
+        ("analysis/t_v1/run.py", '"""Draw figure 2 into the task\'s figures/ directory."""'),
         ("analysis/t_v1/README.md", 'OUT = "/tmp/run1"'),  # prose may quote paths
         ("src/pkg/io.py", 'OUT = "/tmp/run1"'),  # outside analysis/
     ],

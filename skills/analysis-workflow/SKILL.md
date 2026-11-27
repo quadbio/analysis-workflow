@@ -52,7 +52,8 @@ branch, merged through one or more PRs; a later answer to the same question is t
 **Run**
 - `PATHS = task_paths(__file__)` lives in `scripts/_common.py`; call `PATHS.ensure()` in the writer. The tracked
   directories stay in the worktree; `task_paths` anchors the untracked ones (`figures/`, `outputs/`, `logs/`) to the
-  main checkout, so they outlive it.
+  main checkout, so they outlive it. A task's figures, with their previews and legends, go to `PATHS.figures`, never
+  to a path relative to the working directory.
 - Another task's untracked outputs: `task_paths(<its _common.py>).outputs`. Read the main checkout by absolute
   path; never `cd` into it.
 - Batch-job scripts go beside the code they run. A batch job gets the main checkout as `$MAIN` from the submit
