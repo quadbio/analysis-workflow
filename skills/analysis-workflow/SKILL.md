@@ -95,7 +95,8 @@ repo, a short summary.
 - The hook puts the worktree's `src/` first on `PYTHONPATH`, so the repo's own package is imported from the
   worktree. An editable code repo still imports from its main checkout; to run a code-repo worktree's edits, prepend
   its `src/` too. Paths to shared data come from `main_checkout(__file__)`, never from `__file__` alone, which
-  follows the worktree.
+  follows the worktree; tracked repo files (e.g. `resources/`) from `checkout(__file__)`, so a worktree reads its
+  branch's copy.
 - A Jupyter kernel, or a direct call to an environment's `python`, skips pixi's activation: variables the
   environment sets (such as `CONDA_PREFIX`) are missing unless the kernelspec passes them.
 - Verify an environment change with import smoke tests and `--help`, not by re-running analyses.

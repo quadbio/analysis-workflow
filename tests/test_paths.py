@@ -1,12 +1,18 @@
 import pytest
 
-from analysis_workflow import main_checkout, task_paths
+from analysis_workflow import checkout, main_checkout, task_paths
 
 
 def test_main_checkout_from_a_worktree(repo):
     main, worktree = repo
     assert main_checkout(worktree / "analysis") == main.resolve()
     assert main_checkout(main / "analysis") == main.resolve()
+
+
+def test_checkout_is_the_worktree_itself(repo):
+    main, worktree = repo
+    assert checkout(worktree / "analysis" / "new_v1" / "scripts" / "_common.py") == worktree.resolve()
+    assert checkout(main / "analysis") == main.resolve()
 
 
 def test_main_checkout_from_a_file_that_does_not_exist_yet(repo):
