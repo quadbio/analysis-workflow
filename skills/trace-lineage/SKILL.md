@@ -34,7 +34,7 @@ One artifact per report: a key in a store, or a file.
    1. <task> (<author>, <date>): from <inputs used>, giving <keys or files written>.
    2. ...
 
-   Source data: <files under raw/ and resources/, or outside the repo>
+   Source data: <files under data/<dataset>/raw/, data/<dataset>/resources/ or the root resources/, or outside the repo>
    No record: <artifacts on the path that no record covers, or "none">
    ```
 

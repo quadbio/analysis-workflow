@@ -35,6 +35,8 @@ TASK_DIR = re.compile(r".+_v\d+")
 
 #: Under `data/<dataset>/`, what arrived from outside the repo: no task made it.
 SOURCE_DIRS = frozenset({"raw", "resources"})
+#: At the repo root, tracked files kept for every task (such as the figure conventions): no task made them either.
+ROOT_SOURCE_DIR = "resources"
 
 
 def declared(task: Path) -> list[dict] | None:
@@ -140,7 +142,11 @@ class _Walk:
         return node_id
 
     def leaf(self, rel: Path, key: str | None = None) -> str:
-        outside = rel.is_absolute() or (rel.parts[:1] == ("data",) and bool(SOURCE_DIRS & set(rel.parts[2:3])))
+        outside = (
+            rel.is_absolute()
+            or rel.parts[:1] == (ROOT_SOURCE_DIR,)
+            or (rel.parts[:1] == ("data",) and bool(SOURCE_DIRS & set(rel.parts[2:3])))
+        )
         label = f"{rel.name}: {key}" if key else "/".join(rel.parts[-3:])
         return self.node(f"{rel}#{key}" if key else str(rel), label=label, status="source" if outside else "no record")
 

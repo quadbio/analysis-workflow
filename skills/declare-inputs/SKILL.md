@@ -26,10 +26,11 @@ Given several, hand each to its own subagent, with this section as its brief.
    - keys of a shared store: a notebook that reads a whole object and plots two columns used those two. A task
      that copies a store declares `*`, the whole object, also when the copy drops keys;
    - files of other tasks: in their `outputs/` or `results/`, and code imported from them;
-   - data files: under `data/`, or outside the repo by absolute path (`~/...` for a per-user cache, such as a
-     downloaded model).
+   - data files: under `data/`; tracked files under the root `resources/` (such as the figure conventions); or
+     outside the repo by absolute path (`~/...` for a per-user cache, such as a downloaded model).
 
-   Leave out what the task writes itself, and keys it wrote and then reads back.
+   Leave out what the task writes itself, keys it wrote and then reads back, and package code (`src/`, sibling
+   packages), which is part of the environment.
 3. Resolve a path the code builds at run time (a date, a section name, a glob) against what is on disk. Files
    read from one directory by a loop or a glob are listed once, as that directory.
 4. Write the list, and nothing else, to `<task>/inputs.yaml`. Paths inside the repo are relative to its root; keys
@@ -42,6 +43,7 @@ Given several, hand each to its own subagent, with this section as its brief.
      keys: [shapes/cells, tables/table/obs/sample]
    - path: analysis/<dataset>/<topic>/<other_task>/outputs/<file>
    - path: data/<dataset>/raw/<file>
+   - path: resources/figure_conventions.yaml
    ```
 
 5. `analysis-workflow check inputs <task directory>`, and correct what it reports.
