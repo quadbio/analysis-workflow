@@ -48,8 +48,8 @@ analysis repo yet, ask Claude to start an analysis project: the skill sets one u
 **The plugin**, once per machine, from the [quadbio marketplace](https://github.com/quadbio/claude-plugins). The
 skill is then available everywhere; the hooks and session-start rules act only in repos that enable the plugin in
 their committed `.claude/settings.json`. Every repo made from
-[analysis_template](https://github.com/quadbio/analysis_template) does, and depends on the package in its
-`pixi.toml` (its lock pins the commit; `pixi update` moves it). To adopt an existing repo, ask Claude to adopt the
+[analysis_template](https://github.com/quadbio/analysis_template) does, and depends on the PyPI package
+`analysis-workflow` in its `pixi.toml`. To adopt an existing repo, ask Claude to adopt the
 conventions.
 
 **Settings**, saved with `/plugin configure analysis-workflow@quadbio`:
@@ -74,7 +74,8 @@ For live package edits in an analysis repo, depend on the checkout instead:
 ## Release
 
 Bump `version` in `.claude-plugin/plugin.json` and merge: the marketplace follows `main`, and users update when the
-version changes.
+version changes. On that merge, `release.yaml` publishes the package to PyPI as `analysis-workflow`, then tags
+`v<version>` and creates a GitHub Release.
 
 ## License
 
