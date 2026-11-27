@@ -66,9 +66,14 @@ def _rules(repo: str) -> list[tuple[re.Pattern, str, str]]:
             "temp dirs are transient and per-machine; write to PATHS.figures or PATHS.outputs",
         ),
         (
-            re.compile(r"""Path\(\s*["'](data|figures)/"""),
+            re.compile(r"""Path\(\s*["']data/"""),
             "a path relative to the current working directory",
             "it only resolves when run from the repo root; use the repo's FilePaths constants",
+        ),
+        (
+            re.compile(r"""["']figures/"""),
+            "a figure path relative to the current working directory",
+            "a task's figures, with their previews and legends, go to PATHS.figures",
         ),
         (
             re.compile(rf"""["'](/[^"'\n]*/{re.escape(repo)}/)"""),
