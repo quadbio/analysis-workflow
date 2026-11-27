@@ -26,7 +26,7 @@ import zarr
 from anndata.io import read_elem, write_elem
 from zarr.errors import ContainsGroupError
 
-from analysis_workflow.paths import TaskPaths, _checkouts_of, current_task, task_id, task_paths
+from analysis_workflow.paths import TaskPaths, checkout, current_task, task_id, task_paths
 from analysis_workflow.working import CONSOLIDATED, keys_on_disk
 
 logger = logging.getLogger(__name__)
@@ -183,13 +183,13 @@ def _record(path: Path, before: set[str], task: TaskPaths, identity: str) -> str
         _prune(path, after)
     covered = {k for record in records(path) for k in record["keys"]}
     if added := sorted(after - before - covered):
-        checkout, _ = _checkouts_of(task.task)
+        here = checkout(task.task)
         branch = subprocess.run(
-            ["git", "-C", str(checkout), "branch", "--show-current"], capture_output=True, text=True
+            ["git", "-C", str(here), "branch", "--show-current"], capture_output=True, text=True
         ).stdout.strip()
         record = {
             "task": identity,
-            "path": task.task.relative_to(checkout).as_posix(),
+            "path": task.task.relative_to(here).as_posix(),
             "branch": branch or None,
             "keys": added,
             "at": datetime.datetime.now(datetime.UTC).strftime(TIME),
@@ -289,10 +289,10 @@ def credit(path, keys, *, task: TaskPaths | str | Path, at: datetime.datetime, y
         raise KeyError(f"A record of {path} already covers: {', '.join(covered)}.")
     if absent := [k for k in wanted if k not in bare]:
         raise KeyError(f"Not in {path}: {', '.join(absent)}.")
-    checkout, _ = _checkouts_of(credited.task)
+    here = checkout(credited.task)
     record = {
         "task": identity,
-        "path": credited.task.relative_to(checkout).as_posix(),
+        "path": credited.task.relative_to(here).as_posix(),
         "branch": None,
         "keys": wanted,
         "at": at.strftime(TIME),

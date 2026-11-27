@@ -69,6 +69,15 @@ def _checkouts_of(start: str | Path) -> tuple[Path, Path]:
     return _checkouts(str(path))
 
 
+def checkout(start: str | Path = ".") -> Path:
+    """Absolute path of the checkout containing ``start``: in a worktree, the worktree.
+
+    For tracked repo files, such as ``resources/figure_conventions.yaml``, so a worktree reads its branch's copy.
+    Pass ``__file__`` from a script, so the answer does not depend on where it is run from.
+    """
+    return _checkouts_of(start)[0]
+
+
 def main_checkout(start: str | Path = ".") -> Path:
     """Absolute path of the *main* checkout of the repository containing ``start``.
 

@@ -20,6 +20,7 @@ from analysis_workflow.paths import (
     TRACKED_TASK_DIRS,
     UNTRACKED_TASK_DIRS,
     _checkouts_of,
+    checkout,
     empty_dirs,
     main_checkout,
 )
@@ -256,7 +257,7 @@ def inputs(
     tasks: list[Path] = typer.Argument(None, help="Task directories; by default every task of this checkout."),
 ) -> None:
     """Report tasks that have no `inputs.yaml`, or whose list names something that is not there or is out of date."""
-    found = [t.resolve() for t in tasks] if tasks else task_dirs(_checkouts_of(Path.cwd())[0])
+    found = [t.resolve() for t in tasks] if tasks else task_dirs(checkout(Path.cwd()))
     undeclared = [t for t in found if declared(t) is None]
     missing = [(t, what) for t in found for what in missing_inputs(t)]
     stale = [t for t in found if declared(t) is not None and changed_since_declared(t)]

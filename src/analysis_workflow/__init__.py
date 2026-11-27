@@ -2,7 +2,7 @@
 
 from importlib.metadata import version
 
-from analysis_workflow.paths import TaskPaths, main_checkout, task_paths
+from analysis_workflow.paths import TaskPaths, checkout, main_checkout, task_paths
 from analysis_workflow.provenance import credit, register_magic, writes
 from analysis_workflow.size import analyze_anndata_size
 from analysis_workflow.working import commit_adata, keys_on_disk
@@ -10,6 +10,7 @@ from analysis_workflow.working import commit_adata, keys_on_disk
 __all__ = [
     "TaskPaths",
     "analyze_anndata_size",
+    "checkout",
     "commit_adata",
     "credit",
     "keys_on_disk",
