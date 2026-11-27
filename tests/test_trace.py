@@ -111,6 +111,15 @@ def test_a_task_without_declared_inputs_stops_the_trace(project, monkeypatch):
     assert result.exit_code == 1 and "analysis/ds/topic/agent_annot_v1" in result.output
 
 
+def test_a_tracked_root_resource_is_a_source(project):
+    main, tasks = project
+    (main / "resources").mkdir()
+    (main / "resources" / "figure_conventions.yaml").write_text("colors: {}")
+    declare(tasks["human_fig_v1"], [{"path": LABELS}, {"path": "resources/figure_conventions.yaml"}])
+    found = trace(main / FIGURE, start=main)
+    assert found.nodes["resources/figure_conventions.yaml"]["status"] == "source"
+
+
 def test_a_file_in_the_home_directory_is_a_source(project, monkeypatch, tmp_path):
     main, tasks = project
     monkeypatch.setenv("HOME", str(tmp_path))
